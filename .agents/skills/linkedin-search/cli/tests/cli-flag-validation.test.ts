@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import { runCLI } from "./helpers";
 
-const LOCATION = "Copenhagen, Denmark";
+const LOCATION = "Buenos Aires, Argentina";
 
 function parsedStderr(stderr: string): { error?: string; code?: string } {
   try {
@@ -31,6 +31,8 @@ describe("LinkedIn CLI flag validation", () => {
       const result = await runCLI(["search", "-l", LOCATION, "--jobage", "7", "--limit", "1"]);
       const err = parsedStderr(result.stderr);
       expect(err.code).not.toBe("BAD_ARG");
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout).results).toEqual([]);
     });
 
     // Fractional values must be rejected, not truncated: parseInt("0.5") is 0,
@@ -132,6 +134,8 @@ describe("LinkedIn CLI flag validation", () => {
       ]);
       const err = parsedStderr(result.stderr);
       expect(err.code).not.toBe("BAD_ARG");
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout).results).toEqual([]);
     });
   });
 
@@ -158,11 +162,11 @@ describe("LinkedIn CLI flag validation", () => {
 describe("unknown flag rejection", () => {
   // add-portal.md's contract: "a bogus flag or missing required arg exits 1
   // with a JSON error on stderr". A silently discarded flag is worse than an
-  // error: on jobdanmark a wrong flag name returned the entire database
-  // (13,862 results) as if it matched the query (review finding F13,
-  // 2026-08-19). Rejection happens before dispatch, so these are network-free.
+  // error: an ignored filter can return the entire database as if it matched
+  // the query. Rejection happens before dispatch; subprocess tests preload
+  // offline responses so valid arguments never contact a public portal.
   test("a bogus --flag exits 1 with a JSON error instead of being silently discarded", async () => {
-    const result = await runCLI(["search", "-l", "Denmark", "-q", "test", "--bogus-flag", "xyz"]);
+    const result = await runCLI(["search", "-l", "Argentina", "-q", "test", "--bogus-flag", "xyz"]);
     expect(result.exitCode).toBe(1);
     expect(result.stdout).toBe("");
     const error = JSON.parse(result.stderr);

@@ -31,6 +31,39 @@ class FakeWorksheet:
         return [SimpleNamespace(value=value) for value in self.rows[row_number - 1]]
 
 
+class ArgentinaHeadersRegressionTests(unittest.TestCase):
+    def test_spanish_company_city_count_and_index_headers(self):
+        companies = parse_sheet(FakeWorksheet([
+            ("Empresa", "Ciudad", "Cantidad ingeniería", "Índice ingeniería", "CUIT", "Aumento %"),
+            ("Ñandú Ficticia SRL", "Córdoba", 12, "108,5", 12345678901, 15),
+        ]))
+        self.assertEqual(companies, [{"company": "Ñandú Ficticia SRL", "city": "Córdoba", "categories": {"ingeniería": {"count": 12, "index": 108.5}}}])
+
+    def test_salary_amount_is_not_an_index(self):
+        self.assertEqual(detect_column_type("Sueldo"), "amount")
+        self.assertEqual(detect_column_type("Salario"), "amount")
+        self.assertEqual(detect_column_type("Índice salarial"), "index")
+        self.assertIsNone(detect_column_type("Porcentaje de aumento"))
+
+    def test_explicit_row_units_keep_ars_and_usd_separate(self):
+        entries = parse_sheet(FakeWorksheet([
+            ("Razón social", "Localidad", "Sueldo", "Moneda", "Bruto/Neto", "Período", "Fuente", "Fecha", "Legajo", "%"),
+            ("Ñandú Ficticia S.R.L.", "Neuquén", 123, "ARS", "bruto", "mensual", "Demo ficticia", "2026-10-01", 99, 0.15),
+            ("Otra Ficticia S.A.S.", "Córdoba", 456, "USD", "neto", "anual", "Demo ficticia", "2026-10-01", 100, 0.25),
+        ]))
+        local = entries[0]["categories"]["sueldo"]
+        foreign = entries[1]["categories"]["sueldo"]
+        self.assertEqual(local, {"amount": 123.0, "currency": "ARS", "pay_basis": "gross", "period": "month", "source": "Demo ficticia", "as_of": "2026-10-01"})
+        self.assertEqual(foreign["currency"], "USD")
+        self.assertEqual(foreign["period"], "year")
+        self.assertNotIn("index", foreign)
+        self.assertEqual(set(entries[0]["categories"]), {"sueldo"})
+
+    def test_count_fraction_is_not_silently_truncated(self):
+        with self.assertRaisesRegex(ValueError, "integer"):
+            parse_sheet(FakeWorksheet([("Empresa", "Cantidad", "Índice"), ("Ficticia SRL", 12.7, 100)]))
+
+
 class DetectColumnTypeTests(unittest.TestCase):
     def test_index_headers_are_not_misclassified_as_count(self):
         for header in ("Index", "Salary Index", "Engineering Index", "Median salary"):

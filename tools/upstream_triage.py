@@ -7,7 +7,7 @@ pushes, or edits anything - it only reads git history and prints. This is the
 deliberate report/act boundary: on a fork "applies cleanly" is not "correct" -
 a commit for portals the fork dropped can cherry-pick fine and still be wrong,
 and that silent-wrong case is worse than a conflict. So the report stops at
-ready-to-run cherry-pick lines; a human runs them.
+read-only git show lines; a human reviews them before porting changes into native paths.
 
 This is the commit-level companion to check_upstream_updates.py. That tool
 answers "which of my personalized framework files changed" (version stamps);
@@ -34,11 +34,14 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def git(*args: str) -> str:
     return subprocess.run(
-        ["git", *args], capture_output=True, text=True, check=True
+        ["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
     ).stdout
 
 
@@ -50,10 +53,10 @@ def rev_list(range_spec: str) -> list[str]:
 def patch_id(sha: str) -> str | None:
     """Stable patch-id for a commit, or None if it has no diff."""
     show = subprocess.run(
-        ["git", "show", sha], capture_output=True, text=True, check=True
+        ["git", "show", sha], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
     ).stdout
     r = subprocess.run(
-        ["git", "patch-id", "--stable"], input=show, capture_output=True, text=True
+        ["git", "patch-id", "--stable"], cwd=ROOT, input=show, capture_output=True, text=True, encoding="utf-8", errors="replace"
     )
     line = r.stdout.strip()
     return line.split()[0] if line else None
@@ -68,12 +71,28 @@ def files_touched(sha: str) -> list[str]:
     return [f for f in out.splitlines() if f]
 
 
+def native_path(path: str) -> str:
+    """Historical upstream paths are review data, never runtime destinations."""
+    profiles = {
+        "CLAUDE.md": "templates/profile/candidate.md",
+        ".claude/skills/job-application-assistant/01-candidate-profile.md": "templates/profile/candidate.md",
+        ".claude/skills/job-application-assistant/02-behavioral-profile.md": "templates/profile/behavioral.md",
+    }
+    if path in profiles:
+        return profiles[path]
+    if path.startswith(".claude/commands/"):
+        return path.replace(".claude/commands/", ".agents/skills/argentina-job-search/references/workflows/", 1)
+    if path.startswith(".claude/skills/"):
+        return path.replace(".claude/skills/", ".agents/skills/", 1)
+    return path
+
+
 def path_exists(path: str) -> bool:
-    # ls-tree against HEAD is authoritative for "does this fork still ship it".
-    r = subprocess.run(
-        ["git", "cat-file", "-e", f"HEAD:{path}"], capture_output=True
+    path = native_path(path)
+    result = subprocess.run(
+        ["git", "cat-file", "-e", f"HEAD:{path}"], cwd=ROOT, capture_output=True
     )
-    return r.returncode == 0
+    return result.returncode == 0 or (ROOT / path).is_file()
 
 
 def remote_slug(remote: str) -> str | None:
@@ -92,7 +111,7 @@ def remote_slug(remote: str) -> str | None:
 def load_wontport(path: str) -> list[str]:
     """SHA prefixes the fork has decided never to port; missing file -> []."""
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(ROOT / path, encoding="utf-8") as f:
             raw = f.read()
     except FileNotFoundError:
         return []
@@ -154,7 +173,7 @@ def main() -> int:
             skip.append((short, sha, subj, "on the fork's won't-port list"))
             continue
         touched = files_touched(sha)
-        present = [f for f in touched if path_exists(f)]
+        present = [native_path(f) for f in touched if path_exists(f)]
         # A commit whose only surviving footprint is the changelog is one whose
         # real change lives in files this fork removed - the code doesn't apply,
         # only a doc line would. Low signal; demote it.
@@ -170,7 +189,7 @@ def main() -> int:
     lines.append(f"Upstream `{ref}` has **{len(behind)}** commit(s) this fork lacks: "
                  f"**{len(review)}** worth reviewing, **{len(skip)}** probably skippable.")
     lines.append("")
-    lines.append("_This is a triage report. Nothing was merged - review and port by hand._")
+    lines.append("_Review only. Nothing was merged. Port methodology into native paths; never overwrite profile/ or restore a legacy runtime._")
     lines.append("")
 
     lines.append("### Worth reviewing")
@@ -183,14 +202,14 @@ def main() -> int:
             if len(present) > 4:
                 shown += f" +{len(present) - 4} more"
             lines.append(f"| {commit_cell(short, sha, slug)} | {subj} | {shown} |")
-        # Ready-to-run cherry-pick lines - still information, not action. The
+        # Read-only patch inspection lines - still information, not action. The
         # report stops here on purpose; a human runs (and verifies) these.
         lines.append("")
-        lines.append("<details><summary>Ready-to-run cherry-picks (review each before running)</summary>")
+        lines.append("<details><summary>Inspect historical patches before porting native changes</summary>")
         lines.append("")
         lines.append("```bash")
         for short, sha, subj, _ in review:
-            lines.append(f"git cherry-pick {sha}  # {subj}")
+            lines.append(f"git show {sha}  # {subj}")
         lines.append("```")
         lines.append("")
         lines.append("</details>")

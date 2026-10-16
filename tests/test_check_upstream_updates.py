@@ -12,19 +12,13 @@ SCRIPT = REPO_ROOT / "tools" / "check_upstream_updates.py"
 TEMPLATE_URL = "https://github.com/MadsLorentzen/ai-job-search.git"
 FORK_URL = "https://github.com/octocat/ai-job-search.git"
 
-FRAMEWORK_FILES = [
-    ".claude/skills/job-application-assistant/01-candidate-profile.md",
-    ".claude/skills/job-application-assistant/02-behavioral-profile.md",
-    ".claude/skills/job-application-assistant/03-writing-style.md",
-    ".claude/skills/job-application-assistant/04-job-evaluation.md",
-    ".claude/skills/job-application-assistant/05-cv-templates.md",
-    ".claude/skills/job-application-assistant/06-cover-letter-templates.md",
-    ".claude/skills/job-application-assistant/07-interview-prep.md",
-    ".claude/skills/job-application-assistant/08-application-forms.md",
-    ".claude/skills/job-application-assistant/09-web-research.md",
-    ".claude/skills/job-application-assistant/SKILL.md",
-    "AGENTS.md",
-]
+import importlib.util
+_spec = importlib.util.spec_from_file_location("upstream_checker_under_test", SCRIPT)
+_checker = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_checker)
+FRAMEWORK_FILES = list(_checker.UPSTREAM_PATH_MAP)
+UPSTREAM_PATH_MAP = _checker.UPSTREAM_PATH_MAP
+
 
 FRONTMATTER = "---\nframework_version: 1.0.0\n---\n"
 
@@ -38,7 +32,7 @@ class UpstreamCheckerRepoFixture(unittest.TestCase):
         tools.mkdir()
         shutil.copy(SCRIPT, tools / "check_upstream_updates.py")
 
-        for rel in FRAMEWORK_FILES:
+        for rel in set(FRAMEWORK_FILES) | set(UPSTREAM_PATH_MAP.values()):
             path = self.root / rel
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(FRONTMATTER, encoding="utf-8")
@@ -78,11 +72,11 @@ class ForkWithoutUpstreamRemoteTests(UpstreamCheckerRepoFixture):
     def test_fork_fallback_warns_that_check_is_against_own_fork(self):
         result = self.run_checker("--remote", "upstream")
 
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("Falling back to 'origin'", result.stdout)
         self.assertIn("does not point to the ai-job-search template repo", result.stdout)
         self.assertNotIn("up to date with upstream!", result.stdout)
-        self.assertIn("up to date with origin/master", result.stdout)
+        self.assertNotIn("[OK]", result.stdout)
 
 
 class DirectCloneFallbackTests(UpstreamCheckerRepoFixture):
@@ -154,10 +148,55 @@ class UpstreamRefMissingFileTests(UpstreamCheckerRepoFixture):
     def test_file_missing_upstream_is_reported_instead_of_silent_ok(self):
         result = self.run_checker()
 
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("AGENTS.md", result.stdout)
         self.assertNotIn("[OK] All framework files are up to date", result.stdout)
         self.assertIn("[WARNING]", result.stdout)
+
+
+class NativePathAndPrivacyTests(UpstreamCheckerRepoFixture):
+    def setUp(self):
+        super().setUp()
+        self.add_remote("upstream", TEMPLATE_URL)
+        self.materialize_remote_ref("upstream")
+
+    def test_reads_historical_upstream_path_instead_of_native_path(self):
+        path = self.root / ".claude/skills/job-application-assistant/03-writing-style.md"
+        path.write_text(FRONTMATTER.replace("1.0.0", "9.0.0"), encoding="utf-8")
+        subprocess.run(["git", "add", "-A"], cwd=self.root, check=True, capture_output=True)
+        subprocess.run(["git", "commit", "-qm", "new upstream version"], cwd=self.root, check=True, capture_output=True)
+        self.materialize_remote_ref("upstream")
+        result = self.run_checker()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("local 1.0.0 < upstream 9.0.0", result.stdout)
+        self.assertIn("upstream/master:.claude/skills/job-application-assistant/03-writing-style.md", result.stdout)
+        self.assertNotIn("[OK]", result.stdout)
+
+    def test_missing_local_file_is_an_error_and_personal_profile_is_untouched(self):
+        (self.root / FRAMEWORK_FILES[0]).unlink()
+        profile = self.root / "profile/candidate.md"
+        profile.parent.mkdir()
+        profile.write_text("private candidate data", encoding="utf-8")
+        result = self.run_checker()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("Local framework file missing", result.stdout)
+        self.assertEqual(profile.read_text(encoding="utf-8"), "private candidate data")
+        self.assertNotIn("private candidate data", result.stdout)
+        self.assertFalse((self.root / FRAMEWORK_FILES[0]).exists())
+
+    def test_lookalike_origin_is_not_reported_as_official_upstream(self):
+        subprocess.run(["git", "remote", "set-url", "upstream", TEMPLATE_URL.replace(".git", "-copy.git")], cwd=self.root, check=True, capture_output=True)
+        result = self.run_checker()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("cannot establish upstream freshness", result.stdout)
+        self.assertNotIn("[OK]", result.stdout)
+
+    def test_invalid_semver_is_reported_without_traceback(self):
+        (self.root / FRAMEWORK_FILES[-1]).write_text(FRONTMATTER.replace("1.0.0", "9.bad"), encoding="utf-8")
+        result = self.run_checker()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("invalid framework_version", result.stdout)
+        self.assertNotIn("Traceback", result.stderr)
 
 
 if __name__ == "__main__":

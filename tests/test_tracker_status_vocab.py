@@ -34,7 +34,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-COMMANDS = REPO / ".claude" / "commands"
+COMMANDS = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows"
 
 OUTCOME = COMMANDS / "outcome.md"
 GMAIL_SYNC = COMMANDS / "gmail-sync.md"

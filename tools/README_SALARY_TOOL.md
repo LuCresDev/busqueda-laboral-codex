@@ -1,124 +1,145 @@
-# Salary Benchmark Tool
+# Consulta salarial con datos propios
 
-## What is this?
+Esta herramienta opcional busca empresas **solo en el dataset que vos aportes**.
+No consulta una base de salarios de mercado, no recomienda cuánto cobrar y no
+actualiza importes por inflación o tipo de cambio. Si no tenés datos comparables,
+el asistente omite este paso sin impedir la búsqueda laboral.
 
-The salary lookup tool (`salary_lookup.py`) lets you benchmark company salaries against a baseline from your own data. It's used during the `/apply` workflow to show how a company's compensation compares to market rates.
+El archivo local `salary_data.json` está ignorado por Git. No incluyas datos de
+personas identificables ni publiques encuestas o información confidencial.
+Los nombres e importes siguientes son **ficticios para mostrar el formato**.
 
-**This tool is optional.** If you don't have salary data, the salary step is simply skipped during `/apply`.
+## Importes absolutos: moneda, bruto/neto, período y fecha
 
-## How it works
-
-The tool reads a `salary_data.json` file in the repo root containing company salary benchmarks. It uses fuzzy matching to find companies by name, handling Danish/Nordic characters, legal suffixes (A/S, ApS), and common spelling variations.
-
-The data format supports any index-based or absolute salary data. For example:
-- Index 100 = median salary, higher is better
-- Absolute salary values in your currency
-- Any custom metric you want to track
-
-## Data format
-
-The tool expects `salary_data.json` with this structure:
+Para un sueldo usá `amount`, nunca un índice sin unidades:
 
 ```json
 {
   "metadata": {
-    "source": "My Union Statistics 2025",
-    "index_baseline": 100,
-    "index_label": "Index",
-    "baseline_description": "Index 100 = median salary for private sector"
+    "source": "Ejemplo ficticio aportado por el usuario",
+    "as_of": "2026-10-01",
+    "currency": "ARS",
+    "pay_basis": "gross",
+    "period": "month"
   },
   "companies": [
     {
-      "company": "Novo Nordisk A/S",
-      "city": "Bagsværd",
+      "company": "Ñandú Ficticia S.R.L.",
+      "city": "Córdoba",
       "categories": {
-        "all_employees": { "count": 500, "index": 108.5 },
-        "engineering": { "count": 120, "index": 112.3 }
+        "desarrollo": {"amount": 123456.78, "count": 12}
       }
     },
     {
-      "company": "Ørsted A/S",
-      "city": "Fredericia",
+      "company": "Otra Ficticia S.A.S.",
+      "city": "Neuquén",
       "categories": {
-        "all_employees": { "count": 200, "index": 105.2 }
+        "desarrollo": {
+          "amount": 1234.56,
+          "currency": "USD",
+          "pay_basis": "net",
+          "period": "year"
+        }
       }
     }
   ]
 }
 ```
 
-### Fields
+Los campos de cada categoría prevalecen sobre los de `metadata`. Cada importe
+requiere moneda explícita de tres letras, `gross`/`net` (bruto/neto), período
+`month`/`year`/`hour`/`week`/`day`, fuente y fecha real del dato `YYYY-MM-DD`.
+`as_of` es la fecha de los datos, no la fecha en que ejecutaste el comando.
+La herramienta muestra esa fecha; comprobar vigencia y comparabilidad queda a cargo
+del usuario. No transforma valores de una fecha a otra.
 
-- **metadata.source**: Where the data comes from (for reference)
-- **metadata.index_baseline**: The baseline value (e.g., 100 for index-based data)
-- **metadata.index_label**: Label for the index column in output
-- **metadata.baseline_description**: Human-readable explanation of the baseline
-- **companies[].company**: Company name (required)
-- **companies[].city**: City/location (optional, used for filtering)
-- **companies[].categories**: Named salary categories, each with `count` and/or `index`
+La salida `--json` conserva el formato histórico de lista de empresas y materializa
+las unidades/fuente/fecha heredadas en cada categoría con `amount`. No mezcla ARS
+con USD, mensual con anual ni bruto con neto. Tampoco calcula un porcentaje frente
+a una base de índice para un `amount` ni convierte dólares automáticamente.
+La coincidencia de nombre es aproximada: revisá razón social, ciudad y fuente antes
+de atribuir un dato a una empresa. Reconoce SA, SRL, SAS y variantes con puntos,
+tildes, ñ y ciudades como Córdoba/Neuquén sin exigir que tipees las tildes.
 
-## Setup options
+## Índices y cantidades
 
-### Option A: Create salary_data.json manually
-
-Create the file by hand with data from any source: union statistics, Glassdoor, salary surveys, networking, or personal research.
-
-### Option B: Convert from Excel
-
-If you have salary data in an Excel file:
-
-```bash
-pip install openpyxl
-python3 tools/convert_salary_excel.py path/to/salary-data.xlsx \
-  --source "My Salary Data 2025" \
-  --baseline 100 \
-  --baseline-desc "Index 100 = median salary"
-```
-
-On Windows, use `py` if that is how Python is exposed on your PATH. If your system uses `python` instead of `python3`, substitute that in the examples.
-
-The converter auto-detects the Excel layout:
-- Looks for a "Company"/"Firma" column and an optional "City"/"By" column
-- Treats remaining columns as salary data (auto-pairs count/index columns)
-
-### Option C: Build from research
-
-Start with an empty template and add companies as you research them:
+Para una serie de índices aportada por vos, conservá el contrato `index`:
 
 ```json
 {
   "metadata": {
-    "source": "Personal research",
-    "index_baseline": 0,
-    "index_label": "Monthly salary (DKK)",
-    "baseline_description": "Approximate monthly salary before tax"
+    "source": "Encuesta ficticia, no datos de mercado",
+    "index_baseline": 100,
+    "index_label": "Índice",
+    "baseline_description": "Base definida por esta encuesta ficticia"
   },
   "companies": [
     {
-      "company": "Example Corp",
-      "city": "Copenhagen",
-      "categories": {
-        "entry_level": { "index": 42000 },
-        "senior": { "index": 55000 }
-      }
+      "company": "Empresa de Prueba SA",
+      "city": "Rosario",
+      "categories": {"desarrollo": {"count": 12, "index": 108.5}}
     }
   ]
 }
 ```
 
-## Usage
+`count` es cantidad de observaciones/personas, no salario ni identificador.
+Una categoría puede contener un índice con cantidad o solo cantidad. La ausencia
+de `index` no permite afirmar que hubo supresión por privacidad. El `index: null`
+explícito conserva la presentación histórica de dato suprimido.
+El porcentaje contra la base describe únicamente la serie de índices provista;
+no significa estar por encima del mercado argentino. No combines `index` y
+`amount` en la misma categoría.
 
-```bash
-python3 salary_lookup.py "Novo Nordisk"
-python3 salary_lookup.py "Ørsted" --city "Fredericia"
-python3 salary_lookup.py "COWI" --json
-python3 salary_lookup.py --list-all
-python3 salary_lookup.py --validate      # pre-flight check your salary_data.json
+Los archivos históricos que guardaban importes en `index` con base cero siguen
+siendo legibles. No se reinterpretan ni se convierten automáticamente. Para datos
+nuevos, migrá manualmente a `amount` cuando puedas confirmar todas las unidades.
+
+## Convertir un Excel propio
+
+Necesitás la dependencia opcional `openpyxl` en tu Python:
+
+```powershell
+python -m pip install openpyxl
+python tools/convert_salary_excel.py "datos-propios.xlsx" --source "Fuente aportada" --currency ARS --basis bruto --period mensual --as-of 2026-10-01
+python salary_lookup.py --validate
+python salary_lookup.py "Nandu Ficticia" --city "Cordoba"
+python salary_lookup.py "Nandu Ficticia" --json
 ```
 
-## Important notes
+Desde el montaje de Windows también podés invocar Python con
+`.\herramientas.ps1 -Accion python -Argumentos @(...)`.
 
-- The data file (`salary_data.json`) is **excluded from git** (see `.gitignore`). Your salary data may be proprietary or confidential.
-- If the data file is missing, `salary_lookup.py` exits with a helpful error message and the `/apply` workflow skips the salary benchmark step.
-- The fuzzy matcher handles Danish company name variations: legal suffixes, Nordic characters, anglicized spellings, and partial matches.
-- `--validate` checks your data file for malformed category values and duplicate company names and prints a report, without performing a lookup.
+El conversor reconoce:
+
+- Empresa, Compañía o Razón social; Ciudad, Localidad o Ubicación.
+- Cantidad e Índice, con categorías iguales para emparejar, por ejemplo
+  `Cantidad desarrollo` + `Índice desarrollo`.
+- Sueldo, Salario o Remuneración como **importe absoluto**.
+- Columnas explícitas Moneda, Bruto/Neto, Período, Fuente y Fecha por fila;
+  permiten datasets mixtos ARS/USD sin asumir una unidad global. Si contradicen
+  un flag global, el conversor falla para que aclares el archivo.
+- Omite DNI, CUIT, CUIL, legajo, identificadores y porcentajes de aumento;
+  no los convierte en salarios, índices ni cantidades.
+
+Para datos con columnas antiguas en inglés, se conserva la interpretación
+histórica de `Salary` como índice. Si ese Excel contiene importes, agregá
+`--value-kind amount` y las unidades explícitas. Una columna que diga `Index` o
+`Índice` sigue siendo un índice. Las categorías numéricas sin tipo conservan el
+comportamiento histórico; revisalas antes de usar su resultado.
+
+Preferí celdas numéricas reales de Excel. Se aceptan textos como `123.456,78` o
+`123,456.78`; un separador ambiguo como `1.234` o `1,234` se omite, sin adivinar
+una cantidad mil veces mayor o menor. Las cantidades fraccionarias se rechazan,
+no se truncan. Los campos inválidos y las unidades incompletas impiden escribir
+el resultado, conservando el archivo de salida anterior. Revisá siempre el JSON
+convertido antes de incorporarlo a una evaluación.
+
+## Alcance y límites
+
+- Sin `salary_data.json`, se omite la comparación salarial.
+- Sin moneda, base bruto/neto, período, fuente y fecha, no se admite un nuevo importe absoluto.
+- Un valor viejo, de muestra pequeña o de otra modalidad contractual no demuestra
+  cuál sería una oferta actual. La herramienta no corrige esas diferencias.
+- La búsqueda no certifica identidad corporativa ni calidad estadística del dataset.
+- No se extraen datos salariales ni credenciales de portales y no se envía información.

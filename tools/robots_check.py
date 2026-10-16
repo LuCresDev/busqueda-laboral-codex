@@ -1,34 +1,26 @@
 #!/usr/bin/env python3
-"""Decide whether the browser-header curl retry in 09-web-research.md may run.
+"""Check published robots.txt rules for a URL without impersonating another client.
 
-The retry exists to get past bot-filtering firewalls on sites whose robots.txt
-permits access. It is never used to override a site that has said no.
+The default evaluates the wildcard group (*), which is a generic policy check,
+not proof of permission for a particular Codex browser or search provider. Pass
+--agent with the real known product token when appropriate. The robots request
+uses an identifiable utility User-Agent; this helper never changes the posting
+fetcher's identity or bypasses a login, CAPTCHA, block or rate limit.
 
-WebFetch identifies itself as Claude-User and honors robots.txt, so a 403 has
-two very different causes: a WAF default on a site whose published policy
-allows access, or a site that has actually declined. This tells them apart.
+Longest matching rule wins; equal specificity is denied conservatively. A 404
+means no published robots policy, not authorization to disregard terms. Other
+unreadable/error responses leave access unconfirmed. This is a policy signal,
+not an API authorization, a guarantee of access or a website terms checker.
 
-Rules implemented (RFC 9309), deliberately on the cautious side:
-  * longest-match wins; on equal specificity Disallow wins
-  * a Disallow for either "*" or "Claude-User" blocks the retry
-  * blank lines inside a record do not end it (Python's robotparser drops
-    rules in that case, which fails open - see tests)
-  * one leading UTF-8 byte-order mark is skipped (left in, it hides a first
-    "User-agent" line and drops that whole group, which fails open)
-  * 404 means no published policy, which is permission
-  * any other failure to read robots.txt leaves permission unconfirmed,
-    and the retry does not happen - including a User-agent, Allow or
-    Disallow line holding U+FFFD, i.e. a byte that is not valid UTF-8
-
-Usage:  python3 tools/robots_check.py <url>
-Exit 0 = the retry may proceed. Exit 1 = do not retry; go to escalation step 3.
+Usage: python tools/robots_check.py <url> [--agent <real-product-token>]
+Exit 0 = no robots restriction found; 1 = denied or unconfirmed; 2 = CLI misuse.
 """
 
+import argparse
 import re, subprocess, sys
 from urllib.parse import urlsplit, unquote
 
-BROWSER = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-           '(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36')
+REQUEST_AGENT = "ai-job-search-robots-check/2.0"
 
 def _fetch(url, ua):
     """curl, not urllib: some hosts (jobup.ch) hang urllib indefinitely while
@@ -143,14 +135,18 @@ def allowed(text, agent, path):
             best_len, best_allow = n, is_allow      # ties -> Disallow wins (cautious)
     return True if best_len < 0 else best_allow
 
-def gate(url):
+def gate(url, agent='*'):
     parts = urlsplit(url)
+    if parts.scheme not in ('http', 'https') or not parts.hostname:
+        return 1, 'UNCONFIRMED - expected an absolute HTTP(S) URL'
+    if not agent or not re.fullmatch(r'[A-Za-z0-9_.*-]+', agent):
+        return 1, 'UNCONFIRMED - --agent must be a real product token or *'
     path = unquote(parts.path) or '/'
     if parts.query:
         path += '?' + unquote(parts.query)
     robots = f'{parts.scheme}://{parts.netloc}/robots.txt'
     body, last = None, 'no attempt'
-    for ua in ('Claude-User', BROWSER):
+    for ua in (REQUEST_AGENT,):
         try:
             text, code = _fetch(robots, ua)
         except Exception as e:
@@ -167,16 +163,17 @@ def gate(url):
             body = text; break
         last = 'HTTP %d' % code
     if body is None:
-        return 1, 'UNCONFIRMED (%s) - do not retry, go to step 3' % last
-    for a in ('Claude-User', '*'):
+        return 1, 'UNCONFIRMED (%s) - stop automated access and use a permitted source' % last
+    for a in dict.fromkeys((agent, '*')):
         if not allowed(body, a, path):
-            return 1, f'DISALLOWED for {a} - do not retry, go to step 3'
+            return 1, f'DISALLOWED for {a} - stop automated access and use a permitted source'
     return 0, 'ALLOWED - robots.txt permits this path'
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print('usage: python3 tools/robots_check.py <url>', file=sys.stderr)
-        sys.exit(2)
-    rc, msg = gate(sys.argv[1])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('url')
+    parser.add_argument('--agent', default='*', help='real known robots product token; default: wildcard policy only')
+    args = parser.parse_args()
+    rc, msg = gate(args.url, args.agent)
     print(msg)
     sys.exit(rc)

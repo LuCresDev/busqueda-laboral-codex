@@ -1,42 +1,24 @@
-# CI for the framework itself: LaTeX smoke compiles, skill/command lint,
-# CLI typechecks, and (upstream only) placeholder integrity.
-#
-# Fork-friendly by design: forks personalize CLAUDE.md, the skill files, and
-# cv/main_example.tex via /setup, so the placeholder-integrity job and the
-# exact page-count/content assertions run only on the upstream template repo.
-# Compile success, lint correctness, and an extractable PDF text layer are
-# asserted everywhere.
-#
-# Deliberately NOT here: live smoke tests of the job-portal CLIs. They hit
-# real portals (network-flaky, and the linkedin-search skill is personal-use
-# only per its own ToS warning - CI-automated requests would violate that).
-# CI runs typechecks and the checked-in fixture/mock test suites only; live
-# portal testing stays a local, on-demand step.
-#
-# Security posture: this template ships pre-approved Claude Code permissions
-# and CLI code that every fork user executes, so the security-guards job
-# fails PRs that widen settings.json permissions, weaken the personal-data
-# gitignore rules, or add package lifecycle scripts; dependency-review flags
-# newly introduced vulnerable/malicious dependencies. Honest limit: a PR can
-# edit this workflow itself, so these guards catch accidents and casual
-# attempts, not a determined author - branch protection with required checks
-# and human review of workflow/settings diffs remain the real backstop.
-# Actions are pinned to commit SHAs; the token is read-only.
-
+# Native Codex checks run without API keys, personal profiles or LaTeX.
+# Live portal calls are excluded; CLI tests use checked-in fixtures/mocks.
 name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main, master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      check_legacy_latex:
+        description: Also compile optional historical LaTeX examples
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   lint:
-    name: Lint skills, commands, settings
+    name: Native skills, workflows and framework versions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -45,37 +27,54 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
-      - run: pip install pyyaml
+      - run: python -m pip install -r requirements.txt
       - run: python tools/lint_skills.py
-      - name: Framework version guard (upstream template only)
-        if: github.repository == 'MadsLorentzen/ai-job-search'
-        run: python tools/check_framework_version.py
+      - run: python tools/check_framework_version.py
+      - run: python tools/security_guards.py
 
-  security-guards:
-    name: Security guards (permissions, gitignore, manifests)
+  python-tests:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.10", "3.12", "3.14"]
+        include:
+          - os: windows-latest
+            python: "3.12"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python tools/bootstrap.py --profile-only
+      - run: python -m unittest discover -s tests -t . -v
+
+  portable-pdf:
+    name: Render and verify Spanish PDFs without LaTeX
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
-      - run: python tools/security_guards.py
-
-  python-tests:
-    name: Python tool tests (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install Excel integration test dependency
-        run: python -m pip install openpyxl==3.1.5
-      - run: python -m unittest discover -s tests -t . -v
+      - run: python -m pip install -r requirements.txt
+      - name: Generate fictional fixture inputs
+        run: |
+          mkdir -p work/ci-pdf
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from tests.test_render_application import fictional_cv, fictional_cover
+          for kind, data in (("cv", fictional_cv), ("cover", fictional_cover)):
+              Path(f"work/ci-pdf/{kind}.json").write_text(json.dumps(data(), ensure_ascii=False), encoding="utf-8")
+          PY
+      - run: python tools/render_application.py --kind cv --input work/ci-pdf/cv.json --output work/ci-pdf/cv.pdf
+      - run: python tools/render_application.py --kind cover --input work/ci-pdf/cover.json --output work/ci-pdf/cover.pdf
+      - run: python tools/verify_pdf.py work/ci-pdf/cv.pdf --pages 1 --min-chars 100 --contains 'María Núñez'
+      - run: python tools/verify_pdf.py work/ci-pdf/cover.pdf --pages 1 --min-chars 100 --contains 'Saludos cordiales'
 
   dependency-review:
     name: Dependency review
@@ -108,7 +107,52 @@ jobs:
         with:
           fail-on-severity: high
 
+  discover-clis:
+    # The matrix is discovered, not hardcoded, so a portal CLI added in a fork
+    # (the /add-portal path) gets typechecked and tested without the fork
+    # having to edit this workflow - the same reason security-guards globs
+    # .agents/**/package.json instead of naming the shipped portals.
+    name: Discover portal CLIs
+    runs-on: ubuntu-latest
+    outputs:
+      tools: ${{ steps.list.outputs.tools }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - id: list
+        run: |
+          tools=$(find .agents/skills -mindepth 3 -maxdepth 3 -path '*/cli/package.json' \
+            | cut -d/ -f3 | sort | jq -R . | jq -cs .)
+          echo "Discovered portal CLIs: $tools"
+          echo "tools=$tools" >> "$GITHUB_OUTPUT"
+
+  cli-checks:
+    name: CLI checks ${{ matrix.tool }}
+    needs: [discover-clis, lint]
+    if: needs.discover-clis.outputs.tools != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: ${{ fromJSON(needs.discover-clis.outputs.tools) }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - run: bun install
+        working-directory: .agents/skills/${{ matrix.tool }}/cli
+      - run: bun run typecheck
+        working-directory: .agents/skills/${{ matrix.tool }}/cli
+      - name: Run fixture/mock tests when present
+        run: |
+          if find tests -type f -name '*.test.ts' | grep -q .; then
+            bun test
+          else
+            echo "No Bun tests found for ${{ matrix.tool }}; skipping"
+          fi
+        working-directory: .agents/skills/${{ matrix.tool }}/cli
+
+
   latex-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.check_legacy_latex
     # Two legs. texlive/texlive:latest tracks current TeX Live (moderncv 2.5+);
     # debian:bookworm compiles on apt-packaged TeX Live 2022 with moderncv
     # 2.3.1 - the environment #242 hit and the one texlive:latest can never
@@ -184,69 +228,3 @@ jobs:
             --pages 1 \
             --contains 'your.email@example.com' \
             --contains 'Dear [Hiring Manager / Team]'
-
-  discover-clis:
-    # The matrix is discovered, not hardcoded, so a portal CLI added in a fork
-    # (the /add-portal path) gets typechecked and tested without the fork
-    # having to edit this workflow - the same reason security-guards globs
-    # .agents/**/package.json instead of naming the shipped portals.
-    name: Discover portal CLIs
-    runs-on: ubuntu-latest
-    outputs:
-      tools: ${{ steps.list.outputs.tools }}
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - id: list
-        run: |
-          tools=$(find .agents/skills -mindepth 3 -maxdepth 3 -path '*/cli/package.json' \
-            | cut -d/ -f3 | sort | jq -R . | jq -cs .)
-          echo "Discovered portal CLIs: $tools"
-          echo "tools=$tools" >> "$GITHUB_OUTPUT"
-
-  cli-checks:
-    name: CLI checks ${{ matrix.tool }}
-    needs: discover-clis
-    if: needs.discover-clis.outputs.tools != '[]'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        tool: ${{ fromJSON(needs.discover-clis.outputs.tools) }}
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-      - run: bun install
-        working-directory: .agents/skills/${{ matrix.tool }}/cli
-      - run: bun run typecheck
-        working-directory: .agents/skills/${{ matrix.tool }}/cli
-      - name: Run fixture/mock tests when present
-        run: |
-          if find tests -type f -name '*.test.ts' | grep -q .; then
-            bun test
-          else
-            echo "No Bun tests found for ${{ matrix.tool }}; skipping"
-          fi
-        working-directory: .agents/skills/${{ matrix.tool }}/cli
-
-  placeholder-integrity:
-    name: Placeholder integrity (upstream template only)
-    if: github.repository == 'MadsLorentzen/ai-job-search'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - name: Tracked template files must keep their placeholder tokens
-        run: |
-          fail=0
-          check() {
-            if ! grep -q "$2" "$1"; then
-              echo "::error file=$1::expected placeholder token $2 - personal data may have been committed"
-              fail=1
-            fi
-          }
-          check CLAUDE.md '\[YOUR_NAME\]'
-          check cv/main_example.tex '\\name{\[First\]}{\[Last\]}'
-          check cv/main_example.tex '\\email{\[your\.email@example\.com\]}'
-          check cover_letters/cover_example.tex '\[YOUR NAME\]'
-          check .claude/skills/job-application-assistant/01-candidate-profile.md '\[YOUR_EMAIL\]'
-          check .claude/skills/job-application-assistant/04-job-evaluation.md '\[YOUR_PRIMARY_SKILLS\]'
-          exit $fail

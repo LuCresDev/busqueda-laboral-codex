@@ -20,9 +20,11 @@ class ReadmeImageReferences(unittest.TestCase):
         refs = IMG_SRC.findall(text) + MD_IMG.findall(text)
         return [r for r in refs if not r.startswith(("http://", "https://"))]
 
-    def test_readme_exists_and_references_at_least_one_local_image(self):
-        refs = self._local_refs()
-        self.assertGreaterEqual(len(refs), 1, "README lost its mascot header image")
+    def test_readme_exists_and_introduces_the_native_project(self):
+        text = README.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("# "))
+        self.assertIn("Codex", text.splitlines()[0])
+        self.assertIn(".agents/skills/", text)
 
     def test_all_local_image_references_resolve(self):
         for ref in self._local_refs():

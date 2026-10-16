@@ -20,6 +20,62 @@ from salary_lookup import (
 )
 
 
+class ArgentinaSalaryRegressionTests(unittest.TestCase):
+    def test_legal_suffixes_and_spanish_accents_match_without_losing_name_letters(self):
+        for suffix in ("SA", "S.A.", "SRL", "S.R.L.", "SAS", "S.A.S."):
+            with self.subTest(suffix=suffix):
+                self.assertEqual(match_score("Nandu Tecnologia", f"Ñandú Tecnología {suffix}"), 100)
+        self.assertNotEqual(normalize("Peña"), normalize("Pea"))
+
+    def test_city_filter_understands_spanish_accents(self):
+        data = {"companies": [{"company": "Ñandú SRL", "city": "Córdoba"}]}
+        self.assertEqual(len(search_company(data, "Nandu", city="Cordoba")), 1)
+
+    def test_absolute_amount_requires_units_and_source_date(self):
+        data = {"companies": [{"company": "Empresa Ficticia SA", "categories": {"backend": {"amount": 123}}}]}
+        errors, _ = collect_validation_issues(data)
+        self.assertTrue(any("currency" in error for error in errors))
+        self.assertTrue(any("pay_basis" in error for error in errors))
+        self.assertTrue(any("period" in error for error in errors))
+        self.assertTrue(any("source" in error for error in errors))
+        self.assertTrue(any("as_of" in error for error in errors))
+
+    def test_absolute_amount_is_not_rendered_as_index_or_baseline_percentage(self):
+        entry = {"company": "Empresa Ficticia SAS", "categories": {"backend": {"amount": 123, "currency": "ARS", "pay_basis": "gross", "period": "month", "source": "Ejemplo ficticio", "as_of": "2026-10-01"}}}
+        rendered = format_entry(entry, {"index_baseline": 100})
+        self.assertIn("ARS", rendered)
+        self.assertIn("bruto", rendered)
+        self.assertIn("mensual", rendered)
+        self.assertIn("2026-10-01", rendered)
+        self.assertNotIn("+23.0%", rendered)
+
+    def test_count_only_does_not_claim_privacy_suppression(self):
+        rendered = format_entry({"company": "Empresa Ficticia", "categories": {"muestra": {"count": 12}}}, {})
+        self.assertNotIn("privacy", rendered)
+        self.assertNotIn("N/A*", rendered)
+
+    def test_json_context_keeps_mixed_currencies_and_periods_without_mutation(self):
+        entries = [{"company": "Empresa Ficticia", "categories": {
+            "local": {"amount": 123},
+            "exterior": {"amount": 456, "currency": "USD", "pay_basis": "net", "period": "year"},
+            "indice": {"count": 12, "index": 108.5},
+        }}]
+        metadata = {"currency": "ARS", "pay_basis": "gross", "period": "month", "source": "Datos ficticios", "as_of": "2026-10-01"}
+        enriched = salary_lookup.results_with_context(entries, metadata)
+        self.assertEqual(enriched[0]["categories"]["local"]["currency"], "ARS")
+        self.assertEqual(enriched[0]["categories"]["exterior"]["currency"], "USD")
+        self.assertEqual(enriched[0]["categories"]["exterior"]["period"], "year")
+        self.assertEqual(enriched[0]["categories"]["indice"], {"count": 12, "index": 108.5})
+        self.assertNotIn("currency", entries[0]["categories"]["local"])
+
+    def test_invalid_absolute_context_is_reported_without_a_type_error(self):
+        data = {"companies": [{"company": "Empresa Ficticia", "categories": {"demo": {
+            "amount": float("nan"), "currency": "ARS", "pay_basis": [], "period": {}, "source": "Demo", "as_of": "2026-02-30",
+        }}}]}
+        errors, _ = collect_validation_issues(data)
+        self.assertGreaterEqual(len(errors), 4)
+
+
 # ---------------------------------------------------------------------------
 # format_entry tests (from #75 / #98)
 # ---------------------------------------------------------------------------

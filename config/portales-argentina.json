@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "country": "AR",
+  "language": "es-AR",
+  "verified_on": "2026-10-15",
+  "mode": "guided-search",
+  "description": "Catálogo de fuentes para búsqueda guiada. No instala ni afirma disponer de scrapers o API de estos portales.",
+  "policy": {
+    "automatic_scraping_enabled": false,
+    "automatic_applications_enabled": false,
+    "credentials_required": false,
+    "publish_personal_data_in_queries": false,
+    "stop_on_login_captcha_or_rate_limit": true,
+    "treat_search_snippets_as_unverified": true,
+    "remote_requires_argentina_eligibility_check": true,
+    "do_not_include_personal_data_in_queries": true
+  },
+  "primary_portals": [
+    {
+      "id": "bumeran-ar",
+      "name": "Bumeran Argentina",
+      "home_url": "https://www.bumeran.com.ar/",
+      "search_url": "https://www.bumeran.com.ar/empleos.html",
+      "search_query_template": "site:bumeran.com.ar/empleos/ \"{role}\" \"{location}\"",
+      "coverage": [
+        "generalista",
+        "presencial",
+        "híbrido",
+        "remoto"
+      ],
+      "access": {
+        "mode": "web_search_then_public_listing_or_user_browser",
+        "automatic_scraper": false,
+        "api_integration": null,
+        "probe": "2026-10-15: búsqueda web devolvió avisos argentinos actuales; fetch web de empleos.html recibió 429; petición HTTP puntual desde PowerShell recibió 200, sin validar renderizado.",
+        "limitations": "La respuesta depende del cliente. Si hay 429 o barrera de acceso, guardar el enlace para apertura manual; no reintentar en bucle."
+      },
+      "robots": {
+        "url": "https://www.bumeran.com.ar/robots.txt",
+        "status": "HTTP 200 por PowerShell",
+        "notes": "Restringe variantes con recientes/relevantes, localidades y algunas rutas de listados. No implica autorización para scraping."
+      },
+      "sources": [
+        "https://www.bumeran.com.ar/empleos-area-recursos-humanos-y-capacitacion-busqueda-recursos-humanos.html",
+        "https://www.bumeran.com.ar/robots.txt"
+      ]
+    },
+    {
+      "id": "zonajobs-ar",
+      "name": "ZonaJobs",
+      "home_url": "https://www.zonajobs.com.ar/",
+      "search_url": "https://www.zonajobs.com.ar/empleos.html",
+      "search_query_template": "site:zonajobs.com.ar/empleos/ \"{role}\" \"{location}\"",
+      "coverage": [
+        "generalista",
+        "presencial",
+        "híbrido",
+        "remoto"
+      ],
+      "access": {
+        "mode": "web_search_then_public_listing_or_user_browser",
+        "automatic_scraper": false,
+        "api_integration": null,
+        "probe": "2026-10-15: buscador web mostró página argentina con filtros por provincia y modalidad; fetch web de inicio recibió 429; petición HTTP puntual a empleos.html recibió 200, sin validar renderizado.",
+        "limitations": "Deduplicar con Bumeran por empresa, puesto, ubicación y URL. Si hay barrera de acceso, usar enlace manual."
+      },
+      "robots": {
+        "url": "https://www.zonajobs.com.ar/robots.txt",
+        "status": "HTTP 200 por PowerShell",
+        "notes": "Restringe variantes con recientes/relevantes, localidades y algunas rutas de listados. No implica autorización para scraping."
+      },
+      "sources": [
+        "https://www.zonajobs.com.ar/",
+        "https://www.zonajobs.com.ar/robots.txt"
+      ]
+    },
+    {
+      "id": "computrabajo-ar",
+      "name": "Computrabajo Argentina",
+      "home_url": "https://ar.computrabajo.com/",
+      "search_url": "https://ar.computrabajo.com/ofertas-de-trabajo/",
+      "search_query_template": "site:ar.computrabajo.com/ofertas-de-trabajo/ \"{role}\" \"{location}\"",
+      "coverage": [
+        "generalista",
+        "oficios",
+        "operativo",
+        "administración",
+        "profesional"
+      ],
+      "access": {
+        "mode": "web_search_then_public_listing_or_user_browser",
+        "automatic_scraper": false,
+        "api_integration": null,
+        "probe": "2026-10-15: resultados públicos indexados; fetch web del inicio mostró verificación de robot que requiere JavaScript; petición HTTP puntual al listado recibió 200 con título de bolsa de trabajo argentina.",
+        "limitations": "No sortear verificación antirobot. Que un listado responda HTTP 200 no demuestra acceso a todos los avisos ni vigencia de resultados indexados."
+      },
+      "robots": {
+        "url": "https://ar.computrabajo.com/robots.txt",
+        "status": "HTTP 200 por PowerShell",
+        "notes": "Restringe currículums, hojas de vida, /Ajax/, /_services/ y diversas variantes de filtros. No consultar endpoints internos."
+      },
+      "sources": [
+        "https://ar.computrabajo.com/ofertas-de-trabajo/",
+        "https://ar.computrabajo.com/offersgrid/search",
+        "https://ar.computrabajo.com/robots.txt"
+      ]
+    },
+    {
+      "id": "linkedin-ar",
+      "name": "LinkedIn Empleos Argentina",
+      "home_url": "https://ar.linkedin.com/jobs/",
+      "search_url": "https://ar.linkedin.com/jobs/search?location=Argentina",
+      "search_query_template": "site:linkedin.com/jobs/view/ \"{role}\" \"{location}\"",
+      "coverage": [
+        "generalista",
+        "profesional",
+        "tecnología",
+        "remoto internacional"
+      ],
+      "access": {
+        "mode": "search_engine_discovery_and_user_manual_open",
+        "automatic_scraper": false,
+        "api_integration": null,
+        "probe": "2026-10-15: búsqueda pública indexada devolvió puestos y ubicaciones argentinas; robots.txt declara que el acceso automatizado necesita permiso expreso.",
+        "limitations": "No programar navegación, extracción de páginas ni llamadas jobs-guest/voyager. Descubrir enlaces con el buscador; el usuario abre el aviso o aporta su texto."
+      },
+      "robots": {
+        "url": "https://www.linkedin.com/robots.txt",
+        "status": "leído con herramienta web",
+        "notes": "Prohíbe acceso automatizado sin permiso expreso; remite a condiciones de uso y crawling."
+      },
+      "sources": [
+        "https://ar.linkedin.com/jobs/search",
+        "https://www.linkedin.com/robots.txt",
+        "https://www.linkedin.com/legal/user-agreement"
+      ]
+    },
+    {
+      "id": "getonboard-ar",
+      "name": "Get on Board Argentina",
+      "home_url": "https://www.getonbrd.com.ar/",
+      "search_url": "https://www.getonbrd.com.ar/",
+      "search_query_template": "site:getonbrd.com \"{role}\" \"Argentina\"",
+      "coverage": [
+        "tecnología",
+        "producto",
+        "datos",
+        "diseño",
+        "marketing",
+        "remoto"
+      ],
+      "access": {
+        "mode": "web_search_then_public_listing_or_user_browser",
+        "automatic_scraper": false,
+        "api_integration": null,
+        "probe": "2026-10-15: inicio y categoría Programación leídos con herramienta web; el sitio indica mostrar empleos de Argentina y remotos.",
+        "limitations": "El dominio argentino también incluye remotos internacionales. Verificar países admitidos, huso horario, moneda y contratación en cada aviso."
+      },
+      "robots": {
+        "url": "https://www.getonbrd.com.ar/robots.txt",
+        "status": "HTTP 200 por PowerShell",
+        "notes": "La respuesta comprobada contenía únicamente un comentario informativo, sin reglas Disallow. Esto no es permiso de extracción masiva."
+      },
+      "sources": [
+        "https://www.getonbrd.com.ar/",
+        "https://www.getonbrd.com.ar/jobs/programacion",
+        "https://www.getonbrd.com.ar/robots.txt"
+      ]
+    },
+    {
+      "id": "amia",
+      "name": "Servicio de Empleo AMIA",
+      "home_url": "https://empleos.amia.org.ar/",
+      "search_url": "https://empleos.amia.org.ar/busco-empleo/empleos/",
+      "search_query_template": "site:empleos.amia.org.ar \"{role}\" \"{location}\"",
+      "coverage": [
+        "empleos locales",
+        "orientación laboral",
+        "capacitación"
+      ],
+      "access": {
+        "mode": "public_search_page_or_user_browser",
+        "automatic_scraper": false,
+        "api_integration": null,
+        "probe": "2026-10-15: inicio leído con herramienta web y enlace Buscá empleo verificado; página de empleos respondió HTTP 200 por PowerShell y una lectura web tuvo timeout.",
+        "limitations": "El buscador puede necesitar interacción. AMIA indica registrar/actualizar el CV para postular. Las búsquedas web pueden traer cursos o novedades en vez de vacantes."
+      },
+      "robots": {
+        "url": "https://empleos.amia.org.ar/robots.txt",
+        "status": "HTTP 200 por PowerShell",
+        "notes": "Grupo User-agent * con Disallow vacío y sitemap. No equivale a una API de empleos."
+      },
+      "sources": [
+        "https://empleos.amia.org.ar/",
+        "https://empleos.amia.org.ar/busco-empleo/empleos/",
+        "https://empleos.amia.org.ar/robots.txt"
+      ]
+    }
+  ],
+  "complementary_resources": [
+    {
+      "id": "portal-empleo-oficial",
+      "name": "Portal Empleo del Estado argentino",
+      "home_url": "https://www.portalempleo.gob.ar/",
+      "search_url": "https://www.portalempleo.gob.ar/Account/Login",
+      "mode": "user_manual_registration_and_login",
+      "automatic_scraper": false,
+      "api_integration": null,
+      "probe": "2026-10-15: inicio devolvió 502 en herramienta web y HTTP 200 por PowerShell con título Portal Empleo. Instructivo oficial describe acceso a Buscá Empleo desde el perfil registrado.",
+      "limitations": "Recurso adicional de empleo y capacitación. Registro y DNI se ingresan sólo en el sitio oficial por el usuario; no se necesitan en esta configuración. robots.txt devolvió 404; no se asume permiso de automatización.",
+      "sources": [
+        "https://www.portalempleo.gob.ar/",
+        "https://www.argentina.gob.ar/sites/default/files/intructivo_ciudadanos_portal_empleo_julio_2025.pdf"
+      ]
+    }
+  ]
+}

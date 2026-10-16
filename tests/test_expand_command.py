@@ -5,19 +5,19 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXPAND_COMMAND_FILE = REPO_ROOT / ".claude" / "commands" / "expand.md"
-BEHAVIORAL_PROFILE = REPO_ROOT / ".claude" / "skills" / "job-application-assistant" / "02-behavioral-profile.md"
+EXPAND_COMMAND_FILE = REPO_ROOT / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "expand.md"
+BEHAVIORAL_PROFILE = REPO_ROOT / "templates" / "profile" / "behavioral.md"
 
 
 class ExpandCommandTests(unittest.TestCase):
     def test_expand_command_file_exists(self):
-        self.assertTrue(EXPAND_COMMAND_FILE.exists(), "expand.md must exist under .claude/commands/")
+        self.assertTrue(EXPAND_COMMAND_FILE.exists(), "expand.md must exist under .agents/skills/argentina-job-search/references/workflows/")
 
     def test_expand_command_file_starts_with_correct_header(self):
         text = EXPAND_COMMAND_FILE.read_text(encoding="utf-8")
         first_line = text.lstrip().splitlines()[0]
         self.assertTrue(
-            first_line.startswith("# /expand"),
+            first_line.startswith("# ") and not first_line.startswith("# /"),
             f"Command file must start with '# /expand', got: {first_line!r}",
         )
 
@@ -35,7 +35,7 @@ class ExpandCommandTests(unittest.TestCase):
 
     def test_expand_maps_github_projects_to_independent_projects_section(self):
         text = EXPAND_COMMAND_FILE.read_text(encoding="utf-8")
-        self.assertIn("## Independent Projects", text)
+        self.assertIn("## Proyectos independientes", text)
         self.assertIn("Independent Projects & Portfolio", text)
         self.assertIn("GitHub — repo-name", text)
         self.assertIn("Portfolio & projects grounded in code", text)
@@ -44,12 +44,12 @@ class ExpandCommandTests(unittest.TestCase):
     def test_behavioral_additions_name_sections_the_shipped_file_has(self):
         # Step 5 told the model to append to "Strongest Behavioral Traits" or
         # "How I Work Best" and to "match existing structure" - but the shipped
-        # 02-behavioral-profile.md has neither heading (it has "Strongest
+        # profile/behavioral.md has neither heading (it has "Strongest
         # Behaviors" and "How You Work Best"), so the addition either landed
         # in a duplicate near-identical section or was dropped. Derived from
         # the shipped file so a renamed heading fails here until /expand follows.
         text = EXPAND_COMMAND_FILE.read_text(encoding="utf-8")
-        start = text.index("### Additions to `02-behavioral-profile.md`")
+        start = text.index("### Additions to `profile/behavioral.md`")
         section = text[start: text.index("---", start)]
         quoted = re.findall(r'"([^"]+)"', section)
         self.assertTrue(quoted, "the 02-behavioral-profile step must name its target sections")
@@ -59,7 +59,7 @@ class ExpandCommandTests(unittest.TestCase):
         }
         for name in quoted:
             with self.subTest(section=name):
-                self.assertIn(name, headings, f"02-behavioral-profile.md has no '## {name}' heading")
+                self.assertIn(name, headings, f"profile/behavioral.md has no '## {name}' heading")
 
     def test_expand_enforces_additive_and_confirmation_principles(self):
         text = EXPAND_COMMAND_FILE.read_text(encoding="utf-8")

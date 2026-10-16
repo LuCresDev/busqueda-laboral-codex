@@ -155,48 +155,24 @@ class TestSoftTwoHundred(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("not a robots.txt", msg)
 
-    def test_gate_reads_policy_as_browser_when_honest_request_is_refused(self):
-        """09-web-research.md's Barclays-class recovery: the policy file itself
-        returns 403 to Claude-User and 200 to a browser, and the checker must
-        then read it as a browser and obey it strictly. This is gate()'s UA
-        fallback loop, previously untested despite the doc's coverage claim
-        (review finding F30, 2026-08-19)."""
+    def test_refused_policy_stays_unconfirmed_without_impersonating_a_browser(self):
         import robots_check
-
-        original = robots_check._fetch
-
-        def waf(url, ua):
-            if ua == robots_check.BROWSER:
-                return ("User-agent: *\nAllow: /\n", 200)
-            return ("<html>403 Forbidden</html>", 403)
-
-        robots_check._fetch = waf
-        try:
+        from unittest.mock import patch
+        with patch.object(robots_check, "_fetch", return_value=("Forbidden", 403)) as fetch:
             rc, msg = robots_check.gate("https://waf.example/jobs")
-        finally:
-            robots_check._fetch = original
-        self.assertEqual(rc, 0)
-        self.assertIn("ALLOWED", msg)
-
-    def test_gate_obeys_a_browser_fetched_policy_strictly(self):
-        """The fallback must not fail open: a policy readable only as a browser
-        still disallows what it disallows."""
-        import robots_check
-
-        original = robots_check._fetch
-
-        def waf(url, ua):
-            if ua == robots_check.BROWSER:
-                return ("User-agent: *\nDisallow: /jobs\n", 200)
-            return ("<html>403 Forbidden</html>", 403)
-
-        robots_check._fetch = waf
-        try:
-            rc, msg = robots_check.gate("https://waf.example/jobs")
-        finally:
-            robots_check._fetch = original
         self.assertEqual(rc, 1)
-        self.assertIn("DISALLOWED", msg)
+        self.assertIn("UNCONFIRMED", msg)
+        fetch.assert_called_once_with("https://waf.example/robots.txt", robots_check.REQUEST_AGENT)
+
+    def test_named_agent_is_explicit_and_not_assumed_to_be_codex(self):
+        import robots_check
+        from unittest.mock import patch
+        body = "User-agent: KnownAgent\nDisallow: /jobs\n\nUser-agent: *\nAllow: /\n"
+        with patch.object(robots_check, "_fetch", return_value=(body, 200)):
+            self.assertEqual(robots_check.gate("https://x.example/jobs")[0], 0)
+            rc, msg = robots_check.gate("https://x.example/jobs", agent="KnownAgent")
+        self.assertEqual(rc, 1)
+        self.assertIn("DISALLOWED for KnownAgent", msg)
 
     def test_a_genuinely_empty_robots_is_still_allow_all(self):
         """RFC 9309: an empty file permits everything. Do not over-correct."""
@@ -377,12 +353,12 @@ class TestArgumentHardening(unittest.TestCase):
     def test_a_dash_leading_argument_fails_closed(self):
         script = REPO_ROOT / "tools" / "robots_check.py"
         out = subprocess.run(
-            [sys.executable, str(script), "--help"],
+            [sys.executable, str(script), "--unrecognized-curl-option"],
             capture_output=True,
             text=True,
             timeout=60,
         )
-        self.assertEqual(out.returncode, 1)
+        self.assertEqual(out.returncode, 2)
         self.assertNotIn("Usage: curl", out.stdout)
 
     def test_gate_never_passes_the_caller_url_through_to_curl(self):

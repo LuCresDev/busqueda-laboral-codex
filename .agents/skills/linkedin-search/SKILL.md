@@ -1,21 +1,16 @@
 ---
 name: linkedin-search
-version: 1.0.0
-description: >
-  Use this skill whenever the user wants to search for jobs in any location or
-  market, find job listings, or look up a specific job posting — in any country,
-  city, or remotely. Invoke for open positions, vacancies, and hiring across any
-  sector or role (software, data, design, marketing, finance, legal, operations,
-  etc.). The location is always supplied explicitly by the user. Trigger phrases:
-  find a job, job search, search for jobs, job openings, vacancies, hiring,
-  positions open, remote jobs, "are there any X jobs in <place>", look up this
-  job posting.
-context: fork
-enabled: true  # set to false to keep this portal installed but have /scrape skip it
-allowed-tools: Bash(bun run .agents/skills/linkedin-search/cli/src/cli.ts *)
+description: Optional reference for LinkedIn public job search and posting detail across locations. Its
+  CLI is disabled in this workspace by default; use public web discovery or user-provided posting text
+  and respect access restrictions.
+metadata:
+  version: 1.0.0
+  enabled: false
 ---
 
 # LinkedIn Search Skill
+
+Este portal está deshabilitado en el flujo argentino predeterminado (`metadata.enabled: false`). Respetá `AGENTS.md`; no ejecutes su CLI salvo que el usuario cambie ese alcance explícitamente. La clave metadata.enabled es una convención del flujo, no una configuración de permisos del runtime.
 
 Search live job listings from LinkedIn's public job board for **any country/region**
 (and remote). No authentication, no API key, and **zero runtime dependencies** — it runs

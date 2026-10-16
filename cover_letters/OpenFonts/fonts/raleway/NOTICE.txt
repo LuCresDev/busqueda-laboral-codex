@@ -1,0 +1,39 @@
+Raleway: atribución y avisos de los binarios distribuidos
+
+Los archivos de fuentes de este directorio conservan sus bytes originales.
+Se distribuyen bajo SIL Open Font License 1.1, no bajo la licencia MIT del código.
+OFL.txt contiene el texto completo descargado sin modificaciones desde:
+https://raw.githubusercontent.com/google/fonts/main/ofl/raleway/OFL.txt
+
+La cabecera de copyright del texto oficial actual puede diferir de la de
+estos binarios históricos. Se conservan a continuación todos los avisos
+distintos que están realmente embebidos, sin sustituir autores ni fechas.
+Los valores de metadatos siguientes se transcriben literalmente.
+
+SFNT nameID 0
+Archivos: Raleway-Bold.otf, Raleway-ExtraBold.otf, Raleway-ExtraLight.otf, Raleway-Heavy.otf, Raleway-Light.otf, Raleway-Medium.otf, Raleway-Regular.otf, Raleway-SemiBold.otf, Raleway-Thin.otf
+Copyright (c) 2010 - 2012, Matt McInerney (matt@pixelspread.com), Pablo Impallari(impallari@gmail.com), Rodrigo Fuenzalida (hello@rfuenzalida.com) with Reserved Font Name "Raleway"
+
+SFNT nameID 5
+Archivos: Raleway-Bold.otf, Raleway-ExtraBold.otf, Raleway-ExtraLight.otf, Raleway-Heavy.otf, Raleway-Light.otf, Raleway-Medium.otf, Raleway-Regular.otf, Raleway-SemiBold.otf, Raleway-Thin.otf
+Version 2.001
+
+SFNT nameID 7
+Archivos: Raleway-Bold.otf, Raleway-ExtraBold.otf, Raleway-ExtraLight.otf, Raleway-Heavy.otf, Raleway-Light.otf, Raleway-Medium.otf, Raleway-Regular.otf, Raleway-SemiBold.otf, Raleway-Thin.otf
+Raleway is a trademark of Matt McInerney.
+
+SFNT nameID 8
+Archivos: Raleway-Bold.otf, Raleway-ExtraBold.otf, Raleway-ExtraLight.otf, Raleway-Heavy.otf, Raleway-Light.otf, Raleway-Medium.otf, Raleway-Regular.otf, Raleway-SemiBold.otf, Raleway-Thin.otf
+Matt McInerney, Pablo Impallari, Rodrigo Fuenzalida
+
+SFNT nameID 9
+Archivos: Raleway-Bold.otf, Raleway-ExtraBold.otf, Raleway-ExtraLight.otf, Raleway-Heavy.otf, Raleway-Light.otf, Raleway-Medium.otf, Raleway-Regular.otf, Raleway-SemiBold.otf, Raleway-Thin.otf
+Matt McInerney, Pablo Impallari, Rodrigo Fuenzalida
+
+SFNT nameID 13
+Archivos: Raleway-Bold.otf, Raleway-ExtraBold.otf, Raleway-ExtraLight.otf, Raleway-Heavy.otf, Raleway-Light.otf, Raleway-Medium.otf, Raleway-Regular.otf, Raleway-SemiBold.otf, Raleway-Thin.otf
+This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL
+
+SFNT nameID 14
+Archivos: Raleway-Bold.otf, Raleway-ExtraBold.otf, Raleway-ExtraLight.otf, Raleway-Heavy.otf, Raleway-Light.otf, Raleway-Medium.otf, Raleway-Regular.otf, Raleway-SemiBold.otf, Raleway-Thin.otf
+http://scripts.sil.org/OFL

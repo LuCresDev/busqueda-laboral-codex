@@ -102,7 +102,7 @@ class FindNonAsciiDateRangesTests(unittest.TestCase):
     def test_year_like_digits_inside_a_longer_number_are_not_a_year(self):
         # `2000` sits inside `120000`, `200000`, `12000`, `15000`: a budget or
         # throughput range typed with `--` is not a date and must not fail 5d.
-        for text in ("Grew budget DKK 120000\u2013200000", "Scaled ingestion from 12000\u201315000 events/s"):
+        for text in ("Grew budget ARS 120000\u2013200000", "Scaled ingestion from 12000\u201315000 events/s"):
             with self.subTest(text=text):
                 self.assertEqual(find_non_ascii_date_ranges(text), [])
 

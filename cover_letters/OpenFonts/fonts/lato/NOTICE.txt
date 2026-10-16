@@ -1,0 +1,51 @@
+Lato: atribución y avisos de los binarios distribuidos
+
+Los archivos de fuentes de este directorio conservan sus bytes originales.
+Se distribuyen bajo SIL Open Font License 1.1, no bajo la licencia MIT del código.
+OFL.txt contiene el texto completo descargado sin modificaciones desde:
+https://raw.githubusercontent.com/google/fonts/main/ofl/lato/OFL.txt
+
+La cabecera de copyright del texto oficial actual puede diferir de la de
+estos binarios históricos. Se conservan a continuación todos los avisos
+distintos que están realmente embebidos, sin sustituir autores ni fechas.
+Los valores de metadatos siguientes se transcriben literalmente.
+
+SFNT nameID 0
+Archivos: Lato-Bla.ttf, Lato-BlaIta.ttf, Lato-Bol.ttf, Lato-BolIta.ttf, Lato-Reg.ttf, Lato-RegIta.ttf
+Copyright (c) 2010-2011 by tyPoland Lukasz Dziedzic with Reserved Font Name "Lato". Licensed under the SIL Open Font License, Version 1.1.
+
+SFNT nameID 5
+Archivos: Lato-Bla.ttf, Lato-BlaIta.ttf, Lato-Bol.ttf, Lato-BolIta.ttf, Lato-Hai.ttf, Lato-HaiIta.ttf, Lato-Lig.ttf, Lato-LigIta.ttf, Lato-Reg.ttf, Lato-RegIta.ttf
+Version 1.104; Western+Polish opensource
+
+SFNT nameID 7
+Archivos: Lato-Bla.ttf, Lato-BlaIta.ttf, Lato-Bol.ttf, Lato-BolIta.ttf, Lato-Hai.ttf, Lato-HaiIta.ttf, Lato-Lig.ttf, Lato-LigIta.ttf, Lato-Reg.ttf, Lato-RegIta.ttf
+Lato is a trademark of tyPoland Lukasz Dziedzic.
+
+SFNT nameID 8
+Archivos: Lato-Bla.ttf, Lato-BlaIta.ttf, Lato-Bol.ttf, Lato-BolIta.ttf, Lato-Reg.ttf, Lato-RegIta.ttf
+tyPoland Lukasz Dziedzic
+
+SFNT nameID 9
+Archivos: Lato-Bla.ttf, Lato-BlaIta.ttf, Lato-Bol.ttf, Lato-BolIta.ttf, Lato-Hai.ttf, Lato-HaiIta.ttf, Lato-Lig.ttf, Lato-LigIta.ttf, Lato-Reg.ttf, Lato-RegIta.ttf
+Lukasz Dziedzic
+
+SFNT nameID 13
+Archivos: Lato-Bla.ttf, Lato-BlaIta.ttf, Lato-Bol.ttf, Lato-BolIta.ttf, Lato-Reg.ttf, Lato-RegIta.ttf
+Copyright (c) 2010-2011 by tyPoland Lukasz Dziedzic (http://www.typoland.com/) with Reserved Font Name "Lato". Licensed under the SIL Open Font License, Version 1.1 (http://scripts.sil.org/OFL).
+
+SFNT nameID 14
+Archivos: Lato-Bla.ttf, Lato-BlaIta.ttf, Lato-Bol.ttf, Lato-BolIta.ttf, Lato-Hai.ttf, Lato-HaiIta.ttf, Lato-Lig.ttf, Lato-LigIta.ttf, Lato-Reg.ttf, Lato-RegIta.ttf
+http://scripts.sil.org/OFL
+
+SFNT nameID 0
+Archivos: Lato-Hai.ttf, Lato-HaiIta.ttf, Lato-Lig.ttf, Lato-LigIta.ttf
+Copyright (c) 2010-2011 by tyPoland Lukasz Dziedzic with Reserved Font Name "Lato". Licensed under the SIL Open Font License, Version 1.1. 
+
+SFNT nameID 8
+Archivos: Lato-Hai.ttf, Lato-HaiIta.ttf, Lato-Lig.ttf, Lato-LigIta.ttf
+Lukasz Dziedzic
+
+SFNT nameID 13
+Archivos: Lato-Hai.ttf, Lato-HaiIta.ttf, Lato-Lig.ttf, Lato-LigIta.ttf
+Copyright (c) 2011-2011 by tyPoland Lukasz Dziedzic (http://www.typoland.com/) with Reserved Font Name "Lato". Licensed under the SIL Open Font License, Version 1.1 (http://scripts.sil.org/OFL). 

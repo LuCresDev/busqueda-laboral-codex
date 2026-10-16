@@ -20,10 +20,10 @@ except ImportError:
     _HAVE_YAML = False
 
 REPO = Path(__file__).resolve().parent.parent
-COMMAND = REPO / ".claude" / "commands" / "rank.md"
-SCRAPER_SKILL = REPO / ".claude" / "skills" / "job-scraper" / "SKILL.md"
+COMMAND = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "rank.md"
+SCRAPER_SKILL = REPO / ".agents" / "skills" / "job-scraper" / "SKILL.md"
 EVALUATION = (
-    REPO / ".claude" / "skills" / "job-application-assistant" / "04-job-evaluation.md"
+    REPO / ".agents" / "skills" / "job-application-assistant" / "04-job-evaluation.md"
 )
 
 
@@ -62,7 +62,7 @@ class RankCommandSpec(unittest.TestCase):
         self.assertTrue(COMMAND.is_file(), "command spec missing")
         first_line = COMMAND.read_text(encoding="utf-8").splitlines()[0]
         self.assertTrue(
-            first_line.startswith("# /rank"),
+            first_line.startswith("# "),
             f"header must start with '# /rank' (lint_skills.py enforces it), got: {first_line!r}",
         )
 
@@ -116,7 +116,7 @@ class RankCommandSpec(unittest.TestCase):
             "the schema note must forbid guessing a deadline from null or from a missing key",
         )
         self.assertIn(
-            "base field rather than a `/rank` extension",
+            "base field rather than a `ranking` extension",
             text,
             "the note must say the deadline is written when the job is first seen, "
             "not only when /rank re-scores it",
@@ -125,8 +125,8 @@ class RankCommandSpec(unittest.TestCase):
     def test_verdict_is_written_to_location_verdict_not_bare_location(self):
         """`location` meant two incompatible things in seen_jobs.json: a place
         (scraper search output, driving the commute filter) and a PASS/FAIL/FLAG
-        verdict (/rank Step 4), so a ranked entry could overwrite "Aarhus,
-        Denmark" with "PASS" and no reader could tell which meaning a stored
+        verdict (/rank Step 4), so a ranked entry could overwrite "Córdoba,
+        Argentina" with "PASS" and no reader could tell which meaning a stored
         value carried (review finding F27B, 2026-08-19)."""
         text = COMMAND.read_text(encoding="utf-8")
         self.assertIn('"location_verdict"', text, "Step 2's agent JSON must use location_verdict")
@@ -192,8 +192,8 @@ class RankCommandSpec(unittest.TestCase):
     def test_sweep_parses_stored_deadlines_defensively(self):
         """Rule 6's expiry sweep mutates status automatically from stored
         deadline values, and portals have shipped non-ISO shapes into
-        seen_jobs.json ("ASAP" from jobindex, DD.MM.YYYY from jobbank,
-        free text from jobdanmark's detail fallback). /outcome carries a
+        seen_jobs.json ("ASAP", DD.MM.YYYY or free text from a portal detail
+        fallback). /outcome carries a
         defensive date-parse rule for mere display; the command that
         silently changes state needs one at least as much."""
         text = COMMAND.read_text(encoding="utf-8")
@@ -535,7 +535,7 @@ class RankBatchLimitSpec(unittest.TestCase):
     def test_step5_reports_deferral_and_how_to_continue(self):
         report = self.sections.get("Job Ranking - YYYY-MM-DD", "")
         self.assertIn("jobs deferred", report)
-        self.assertIn("re-run `/rank` to continue", report)
+        self.assertIn("re-run `ranking` to continue", report)
 
 
 class RankStateToolSpec(unittest.TestCase):
@@ -645,13 +645,11 @@ class RankStateToolSpec(unittest.TestCase):
             "Step 4 must still state that job_search_tracker.csv is read-only for /rank",
         )
 
-    def test_settings_and_guards_allow_the_new_tool(self):
-        settings = json.loads((REPO / ".claude" / "settings.json").read_text(encoding="utf-8"))
-        allow = settings["permissions"]["allow"]
-        guards = (REPO / "tools" / "security_guards.py").read_text(encoding="utf-8")
-        for entry in ("Bash(python tools/rank_state.py:*)", "Bash(python3 tools/rank_state.py:*)"):
-            self.assertIn(entry, allow, f"{entry} missing from .claude/settings.json")
-            self.assertIn(entry, guards, f"{entry} missing from security_guards.py's reviewed allowlist")
+    def test_rank_tool_is_native_without_legacy_permission_settings(self):
+        self.assertTrue((REPO / "tools/rank_state.py").is_file())
+        self.assertFalse((REPO / ".claude").exists())
+        self.assertFalse((REPO / "CLAUDE.md").exists())
+        self.assertNotIn("ALLOWED_PERMISSIONS", (REPO / "tools/security_guards.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

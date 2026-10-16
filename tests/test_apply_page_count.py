@@ -1,85 +1,42 @@
-"""Guard for /apply Step 5b's page-count check.
-
-The 2-page CV and 1-page cover letter limits are the hard rules of
-05-cv-templates.md and 06-cover-letter-templates.md, and two places defer
-their enforcement to `tools/verify_pdf.py --pages`: `verify_layout.py`'s
-docstring ("page count is verify_pdf.py's job, and CI runs it") and Step 5b's
-own prose, which used to say "Step 5d already runs it". Step 5d's only
-invocation is `--dump-text`, and no other step passed `--pages` at all, so
-the one rule with a mechanical check had zero runnable implementations in
-the workflow. These tests pin that the invocations exist where the prose says
-they do, with the counts the guides require, and that no step defers the
-check to another step that does not run it.
-"""
+"""The selected PDF renderer and workflow agree on actual page budgets."""
+import ast
 import re
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-APPLY = REPO / ".claude" / "commands" / "apply.md"
-VERIFY_LAYOUT = REPO / "tools" / "verify_layout.py"
+ROOT = Path(__file__).resolve().parents[1]
+APPLY = ROOT / ".agents/skills/argentina-job-search/references/workflows/apply.md"
+RENDERER = ROOT / "tools/render_application.py"
 
 
-def section(path, heading):
-    """The body of one markdown section, up to the next heading of any depth."""
-    text = path.read_text(encoding="utf-8")
-    start = text.index(heading) + len(heading)
-    rest = text[start:]
-    end = re.search(r"^#{1,4} ", rest, re.MULTILINE)
-    return rest[: end.start()] if end else rest
-
-
-def page_count_invocations(text):
-    """(document path, page count) for every runnable verify_pdf --pages line."""
-    return re.findall(
-        r"^python tools/verify_pdf\.py (\S+) --pages (\d+)\s*$", text, re.MULTILINE
-    )
-
-
-class ApplyRunsThePageCountCheck(unittest.TestCase):
+class ActiveTemplatePageLimitsTests(unittest.TestCase):
     def setUp(self):
-        self.step_5b = section(APPLY, "### 5b. Inspect layout")
+        self.text = APPLY.read_text(encoding="utf-8")
+        self.render = self.text.split("### 5a.", 1)[1].split("### 5b.", 1)[0]
+        self.inspect = self.text.split("### 5b.", 1)[1].split("### 5c.", 1)[0]
 
-    def test_step_5b_checks_both_documents_with_the_guides_page_limits(self):
-        invocations = dict(page_count_invocations(self.step_5b))
-        self.assertEqual(
-            invocations.get("cv/main_<company>_<role>.pdf"),
-            "2",
-            "Step 5b must run verify_pdf.py --pages 2 on the CV - the hard "
-            "2-page limit has no other mechanical check",
-        )
-        self.assertEqual(
-            invocations.get("cover_letters/cover_<company>_<role>.pdf"),
-            "1",
-            "Step 5b must run verify_pdf.py --pages 1 on the cover letter",
-        )
+    def test_runnable_render_commands_cover_both_actual_document_kinds(self):
+        invocations = re.findall(r"'tools/render_application.py', '--kind', '(cv|cover)', '--input', '([^']+)', '--output', '([^']+)'", self.render)
+        self.assertEqual({kind for kind, _, _ in invocations}, {"cv", "cover"})
+        for kind, source, output in invocations:
+            self.assertTrue(source.endswith(".json"), (kind, source))
+            self.assertEqual(source[:-5] + ".pdf", output)
+        module = ast.parse(RENDERER.read_text(encoding="utf-8"))
+        limits = next(ast.literal_eval(node.value) for node in module.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "LIMITS" for target in node.targets))
+        self.assertEqual(limits, {"cv": 2, "cover": 1})
+        self.assertIn("CV 1–2 pages", self.inspect)
+        self.assertIn("cover letter 1 page", self.inspect)
 
-    def test_page_count_runs_before_the_layout_measurement(self):
-        # verify_layout.py's own docstring declines to check page count because
-        # verify_pdf.py --pages does; the deferral only holds if that runs first.
-        first_pages = self.step_5b.index("--pages")
-        first_layout = self.step_5b.index("verify_layout.py")
-        self.assertLess(first_pages, first_layout)
+    def test_one_page_cv_is_not_forced_to_two_pages(self):
+        self.assertIn("do not force --pages 2", self.inspect)
+        self.assertIn("letter use --pages 1", self.inspect)
+        self.assertNotRegex(self.render, r"verify_pdf.py\s+cv/\S+\s+--pages\s+2")
 
-    def test_no_step_defers_the_check_to_a_step_that_does_not_run_it(self):
-        text = APPLY.read_text(encoding="utf-8")
-        self.assertNotIn(
-            "Step 5d already runs it",
-            text,
-            "Step 5d's only verify_pdf call is --dump-text; the page-count "
-            "invocation lives in 5b and the prose must point there",
-        )
-
-    def test_layout_tools_deferral_is_backed_by_a_runnable_invocation(self):
-        docstring = VERIFY_LAYOUT.read_text(encoding="utf-8")
-        self.assertIn("verify_pdf.py --pages", docstring)
-        self.assertGreaterEqual(
-            len(page_count_invocations(APPLY.read_text(encoding="utf-8"))),
-            2,
-            "verify_layout.py defers page count to verify_pdf.py --pages, so "
-            "/apply must actually invoke it",
-        )
-
+    def test_inspection_and_degraded_layout_verdict_are_explicit(self):
+        self.assertIn("Inspect every rendered page", self.inspect)
+        self.assertIn("exit 2/skipped", self.inspect)
+        self.assertIn("never an approved layout verdict", self.inspect)
+        self.assertIn("do not present an older PDF", self.render)
 
 if __name__ == "__main__":
     unittest.main()

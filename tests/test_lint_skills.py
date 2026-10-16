@@ -1,4 +1,4 @@
-import json
+"""Exercise native skill discovery, workflow titles and referenced CLI paths."""
 import shutil
 import subprocess
 import sys
@@ -6,167 +6,91 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-LINTER_SCRIPT = REPO_ROOT / "tools" / "lint_skills.py"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_linter(root: Path) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, str(root / "tools" / "lint_skills.py")],
-        capture_output=True,
-        text=True,
-    )
-
-
-class LinterRepoFixture(unittest.TestCase):
+class NativeSkillLintTests(unittest.TestCase):
     def setUp(self):
-        self.root = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        (self.root / "tools").mkdir()
+        shutil.copy(REPO_ROOT / "tools/lint_skills.py", self.root / "tools/lint_skills.py")
+        self.skill = self.root / ".agents/skills/example/SKILL.md"
+        self.skill.parent.mkdir(parents=True)
+        self.skill.write_text("---\nname: example\ndescription: Example skill\n---\n", encoding="utf-8")
+        self.workflow = self.root / ".agents/skills/argentina-job-search/references/workflows/setup.md"
+        self.workflow.parent.mkdir(parents=True)
+        self.workflow.write_text("# Completar perfil\n", encoding="utf-8")
 
-        tools = self.root / "tools"
-        tools.mkdir()
-        shutil.copy(LINTER_SCRIPT, tools / "lint_skills.py")
-        # The Python-test CI job does not install PyYAML; the separate lint job
-        # does. These settings-focused tests only need a valid frontmatter map.
-        # The stub parses simple "key: value" lines, enough for the flat
-        # frontmatter these fixtures write, so the checks under test see the
-        # actual file content instead of a canned mapping.
-        (tools / "yaml.py").write_text(
-            "class YAMLError(Exception):\n"
-            "    pass\n\n"
-            "def safe_load(text):\n"
-            "    result = {}\n"
-            "    for line in (text or '').splitlines():\n"
-            "        if ':' in line:\n"
-            "            key, _, value = line.partition(':')\n"
-            "            result[key.strip()] = value.strip()\n"
-            "    return result\n",
-            encoding="utf-8",
-        )
+    def run_linter(self):
+        return subprocess.run([sys.executable, str(self.root / "tools/lint_skills.py")],
+                              capture_output=True, text=True, encoding="utf-8")
 
-        command = self.root / ".claude" / "commands" / "setup.md"
-        command.parent.mkdir(parents=True)
-        command.write_text("# /setup - Test setup command\n", encoding="utf-8")
-
-        skill = self.root / ".claude" / "skills" / "example" / "SKILL.md"
-        skill.parent.mkdir(parents=True)
-        skill.write_text(
-            "---\nname: example\ndescription: Example skill\n---\n",
-            encoding="utf-8",
-        )
-
-        self.settings = self.root / ".claude" / "settings.json"
-        self.write_settings({"permissions": {"allow": []}})
-
-    def write_settings(self, data):
-        self.settings.write_text(json.dumps(data), encoding="utf-8")
-
-
-class SettingsShapeTests(LinterRepoFixture):
-    def test_valid_settings_pass(self):
-        result = run_linter(self.root)
-
+    def test_native_tree_without_settings_passes_and_is_not_double_counted(self):
+        result = self.run_linter()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("lint_skills: OK", result.stdout)
+        self.assertIn("1 skills, 1 workflow references", result.stdout)
 
-    def test_invalid_json_fails_cleanly(self):
-        self.settings.write_text("{not json", encoding="utf-8")
-
-        result = run_linter(self.root)
-
-        self.assertEqual(result.returncode, 1)
-        self.assertIn(".claude/settings.json", result.stdout)
-        self.assertNotIn("Traceback", result.stderr)
-
-    def test_non_object_root_fails_cleanly(self):
-        for data in ([], "settings", 1, None):
-            with self.subTest(data=data):
-                self.write_settings(data)
-
-                result = run_linter(self.root)
-
-                self.assertEqual(result.returncode, 1)
-                self.assertIn("top-level JSON value to be an object", result.stdout)
+    def test_frontmatter_shapes_fail_cleanly(self):
+        for contents in ("# Missing frontmatter", "---\nname: example\n", "---\n- list\n---\n", "---\nname: example\ndescription:\n---\n"):
+            with self.subTest(contents=contents):
+                self.skill.write_text(contents, encoding="utf-8")
+                result = self.run_linter()
+                self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertNotIn("Traceback", result.stderr)
 
-    def test_non_object_permissions_fails_cleanly(self):
-        for permissions in ([], "permissions", 1, None):
-            with self.subTest(permissions=permissions):
-                self.write_settings({"permissions": permissions})
-
-                result = run_linter(self.root)
-
-                self.assertEqual(result.returncode, 1)
-                self.assertIn("expected permissions to be an object", result.stdout)
-                self.assertNotIn("Traceback", result.stderr)
-
-    def test_non_list_allow_fails_cleanly(self):
-        for allow in ({}, "Bash(bun run:*)", 1, None):
-            with self.subTest(allow=allow):
-                self.write_settings({"permissions": {"allow": allow}})
-
-                result = run_linter(self.root)
-
-                self.assertEqual(result.returncode, 1)
-                self.assertIn("expected permissions.allow to be a list", result.stdout)
-                self.assertNotIn("Traceback", result.stderr)
-class SkillAndCommandCheckTests(LinterRepoFixture):
-    """check_skill()/check_command() are the linter's main job and were
-    previously untested - only check_settings() had coverage, so deleting
-    e.g. the missing-allowed-tools error survived the whole suite (review
-    finding F23, 2026-08-19)."""
-
-    def write_skill(self, frontmatter: str):
-        skill = self.root / ".claude" / "skills" / "example" / "SKILL.md"
-        skill.write_text(frontmatter, encoding="utf-8")
-
-    def test_allowed_tools_referencing_a_missing_file_fails(self):
-        self.write_skill(
-            "---\n"
-            "name: example\n"
-            "description: Example skill\n"
-            "allowed-tools: Bash(bun run .claude/skills/example/DOES_NOT_EXIST.ts *)\n"
-            "---\n"
-        )
-
-        result = run_linter(self.root)
-
-        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("allowed-tools references a missing file", result.stdout)
-        self.assertIn("DOES_NOT_EXIST.ts", result.stdout)
-
-    def test_allowed_tools_referencing_an_existing_file_passes(self):
-        target = self.root / ".claude" / "skills" / "example" / "cli.ts"
-        target.write_text("// present\n", encoding="utf-8")
-        self.write_skill(
-            "---\n"
-            "name: example\n"
-            "description: Example skill\n"
-            "allowed-tools: Bash(bun run .claude/skills/example/cli.ts *)\n"
-            "---\n"
-        )
-
-        result = run_linter(self.root)
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_frontmatter_missing_description_fails(self):
-        self.write_skill("---\nname: example\ndescription:\n---\n")
-
-        result = run_linter(self.root)
-
+    def test_missing_cli_path_fails_and_existing_path_passes(self):
+        self.skill.write_text("---\nname: example\ndescription: Example\nallowed-tools: Bash(bun run .agents/skills/example/cli.ts *)\n---\n", encoding="utf-8")
+        result = self.run_linter()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("missing required key 'description'", result.stdout)
+        self.assertIn("references a missing file", result.stdout)
+        (self.skill.parent / "cli.ts").write_text("// fixture\n", encoding="utf-8")
+        self.assertEqual(self.run_linter().returncode, 0)
 
-    def test_command_without_slash_title_fails(self):
-        command = self.root / ".claude" / "commands" / "setup.md"
-        command.write_text("# setup - missing the slash\n", encoding="utf-8")
+    def test_custom_fields_belong_in_metadata_and_enabled_is_boolean(self):
+        for fields in ("enabled: false", "version: 1.0.0", "metadata:\n  enabled: perhaps"):
+            with self.subTest(fields=fields):
+                self.skill.write_text("---\nname: example\ndescription: Example\n" + fields + "\n---\n", encoding="utf-8")
+                self.assertEqual(self.run_linter().returncode, 1)
+        self.skill.write_text("---\nname: example\ndescription: Example\nmetadata:\n  version: '1.0.0'\n  enabled: false\n---\n", encoding="utf-8")
+        self.assertEqual(self.run_linter().returncode, 0)
 
-        result = run_linter(self.root)
-
+    def test_empty_native_skill_root_fails_even_if_workflows_exist(self):
+        self.skill.unlink()
+        result = self.run_linter()
         self.assertEqual(result.returncode, 1)
-        self.assertIn("must start with a '# /<name>' title", result.stdout)
+        self.assertIn("no SKILL.md files found", result.stdout)
+
+    def test_empty_workflow_root_fails(self):
+        self.workflow.unlink()
+        self.assertEqual(self.run_linter().returncode, 1)
+
+    def test_wrong_skill_name_and_workflow_alias_fail(self):
+        self.skill.write_text("---\nname: other\ndescription: Example\n---\n", encoding="utf-8")
+        self.workflow.write_text("# /different - Wrong alias\n", encoding="utf-8")
+        result = self.run_linter()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("reviewed alias", result.stdout)
+        self.assertIn("does not match filename", result.stdout)
+
+    def test_workflow_needs_a_title_without_requiring_slash_syntax(self):
+        self.workflow.write_text("No heading\n", encoding="utf-8")
+        self.assertEqual(self.run_linter().returncode, 1)
+
+    def test_local_links_resolve_and_missing_links_fail(self):
+        self.workflow.write_text("# Completar perfil\n\n[Datos](data.md)\n", encoding="utf-8")
+        self.assertIn("broken local link", self.run_linter().stdout)
+        (self.workflow.parent / "data.md").write_text("# Datos\n", encoding="utf-8")
+        self.assertEqual(self.run_linter().returncode, 0)
+
+    def test_cli_paths_cannot_escape_the_repository(self):
+        self.skill.write_text("---\nname: example\ndescription: Example\nallowed-tools: Bash(bun run ../outside.ts *)\n---\n", encoding="utf-8")
+        self.assertIn("must stay inside the repository", self.run_linter().stdout)
+
+    def test_legacy_runtime_is_not_treated_as_a_native_skill(self):
+        (self.root / ".claude").mkdir()
+        self.assertIn("legacy runtime path", self.run_linter().stdout)
 
 
 if __name__ == "__main__":

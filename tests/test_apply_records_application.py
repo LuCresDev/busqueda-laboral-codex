@@ -25,15 +25,15 @@ except ImportError:
     _HAVE_YAML = False
 
 REPO = Path(__file__).resolve().parent.parent
-COMMANDS = REPO / ".claude" / "commands"
+COMMANDS = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows"
 APPLY = COMMANDS / "apply.md"
 OUTCOME = COMMANDS / "outcome.md"
 GMAIL_SYNC = COMMANDS / "gmail-sync.md"
 HTML_REPORT = COMMANDS / "html-report.md"
 INTERVIEW = COMMANDS / "interview.md"
 NOTION_SYNC = COMMANDS / "notion-sync.md"
-SKILL = REPO / ".claude" / "skills" / "job-application-assistant" / "SKILL.md"
-SCRAPER = REPO / ".claude" / "skills" / "job-scraper" / "SKILL.md"
+SKILL = REPO / ".agents" / "skills" / "job-application-assistant" / "SKILL.md"
+SCRAPER = REPO / ".agents" / "skills" / "job-scraper" / "SKILL.md"
 DOCS_README = REPO / "documents" / "README.md"
 
 TRACKER_HEADER = (
@@ -45,6 +45,8 @@ TRACKER_HEADER = (
 def section(path, heading):
     """The body of one markdown section, up to the next heading of any depth."""
     text = path.read_text(encoding="utf-8")
+    if heading is None:
+        return text
     start = text.index(heading) + len(heading)
     rest = text[start:]
     end = re.search(r"^#{1,4} ", rest, re.MULTILINE)
@@ -75,7 +77,7 @@ class ApplyRecordsApplication(unittest.TestCase):
         The exact-equality loop below is load-bearing, not decoration. `assertIn`
         on its own cannot see an *additive* drift: a 13-column header is a
         substring of a 14-column one, so appending a column to `/apply` and
-        forgetting `/outcome` passed this test cleanly until the loop was added.
+        forgetting `seguimiento` passed this test cleanly until the loop was added.
 
         It is also what makes the constant-only assertions in this class mean
         anything: they reason about TRACKER_HEADER, and this is the test that
@@ -177,14 +179,14 @@ class ApplyRecordsApplication(unittest.TestCase):
         )
 
     def test_skill_defers_to_apply_rather_than_restating(self):
-        """/scrape Step 5 routes into the skill, bypassing /apply entirely."""
-        step_3b = section(SKILL, "### Step 3b: Record the Application")
-        self.assertIn(
-            "`/apply` Step 6b",
-            step_3b,
-            "the skill's recording step no longer points at the canonical rule, so "
-            "the two copies can drift",
-        )
+        text = SKILL.read_text(encoding="utf-8")
+        canonical = ".agents/skills/argentina-job-search/references/workflows/apply.md"
+        self.assertIn(canonical, text)
+        self.assertTrue((REPO / canonical).is_file())
+        self.assertIn("única definición", text)
+        self.assertNotIn(TRACKER_HEADER, text, "the router must not maintain another CSV schema")
+        self.assertIn("no añadir una segunda fila", text)
+
 
 
 class DraftedMeansDraftedToEveryReader(unittest.TestCase):
@@ -268,7 +270,7 @@ class ApplyArchivesThePosting(unittest.TestCase):
          "a model that no longer holds the text would re-fetch to comply, the "
          "dead-URL path this whole item exists to avoid"),
         (APPLY, "### Step 6b: Record the Application",
-         "`/outcome` Step 1.4",
+         "`seguimiento` Step 1.4",
          "the derivation is no longer pinned to /outcome's, so a later edit to "
          "either can silently orphan the archive"),
         (OUTCOME, "## Step 1: Load State and Identify the Application",
@@ -291,14 +293,6 @@ class ApplyArchivesThePosting(unittest.TestCase):
          "never reconstruct it from memory",
          "a model that reached Step 6b without the text could satisfy none of "
          "item 7's constraints, and would write a remembered posting instead"),
-        (SKILL, "### Step 1: Research & Evaluate Fit",
-         "full posting text verbatim",
-         "the /scrape path never runs /apply Step 0, so nothing stops it "
-         "compressing the posting before Step 3b archives it"),
-        (SKILL, "### Step 3b: Record the Application",
-         "same posting archive",
-         "the /scrape path reaches Step 3b without running /apply, and its "
-         "closed enumeration of Step 6b's rules would omit the archive write"),
         (OUTCOME, "## Step 3: Archive the Application Materials",
          "if it already exists, leave it",
          "/outcome would overwrite /apply's archived posting with a re-fetch, "
@@ -349,9 +343,6 @@ class DeadlineSurvivesEveryWrite(unittest.TestCase):
          "built on) must override the scraper's stored value"),
         (NOTION_SYNC, None, "tracker `deadline` column",
          "the Deadine property must name the tracker column as its source"),
-        (SKILL, "### Step 3b: Record the Application", "`deadline` is the application deadline",
-         "the /scrape path reaches Step 3b without running /apply Step 0, so it must "
-         "still be told what the field is and where it comes from"),
         # The two properties the migration has to hold. Both are stated in the
         # prose of either file and neither was pinned, so either could be edited
         # away with a green suite - turning an agreed header-line append into a
@@ -504,14 +495,10 @@ class ArchiveNameIsOnePathComponent(unittest.TestCase):
          "Step 1.4 is the derivation every other writer cites; paraphrasing "
          "the rule here is how the two copies drifted apart originally"),
         (APPLY, "### Requirement coverage (both documents)",
-         "the same rule `/outcome` Step 1.4 uses",
+         "the same rule `seguimiento` Step 1.4 uses",
          "CV and cover-letter filenames use the same unsanitised values; a "
          "`/` there sends the draft to a path lualatex never writes a PDF "
          "back to, and the Step 4 compile check fails on a phantom path"),
-        (SKILL, "### Step 2: Tailor CV",
-         "by the **Subfolder naming** rule in `documents/README.md`",
-         "the /scrape path writes its documents before Step 3b consults /apply, "
-         "so /apply's filename rule cannot protect it"),
         (GMAIL_SYNC, "## Step 2: Load State",
          "by the **Subfolder naming** rule in `documents/README.md`",
          "gmail-sync both locates and creates archives; its old spaces-only "

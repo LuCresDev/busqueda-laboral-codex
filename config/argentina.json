@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "locale": "es-AR",
+  "country_code": "AR",
+  "timezone": "America/Argentina/Buenos_Aires",
+  "conversation_language": "es-AR",
+  "default_cv_language": "es",
+  "profile_sources": [
+    "profile/candidate.md",
+    "profile/behavioral.md",
+    "profile/writing-style.md",
+    "profile/evaluation.md",
+    "profile/interview.md"
+  ],
+  "market": {
+    "name": "Argentina",
+    "remote_eligibility_country": "AR",
+    "remote_latam_requires_explicit_eligibility_check": true,
+    "portals_config": "config/portales-argentina.json"
+  },
+  "onboarding": {
+    "required_profile_fields": [
+      "target_roles",
+      "experience_or_projects",
+      "technical_skills",
+      "workplace_preferences",
+      "working_languages_and_levels"
+    ],
+    "location_required_when": "filtering_commute_or_confirming_country_eligibility"
+  },
+  "templates": {
+    "cv": "templates/cv/argentina-ats/template.json",
+    "cover_letter": "templates/cover_letters/argentina-simple/template.json"
+  },
+  "pdf": {
+    "renderer": "tools/render_application.py",
+    "cv_page_range": [
+      1,
+      2
+    ],
+    "cover_letter_pages": 1,
+    "text_extraction_required": true,
+    "visual_inspection_required": true
+  },
+  "windows_helper": "herramientas.ps1",
+  "runtime": "codex",
+  "project": {
+    "name": "Búsqueda Laboral con Codex",
+    "repository_name": "busqueda-laboral-codex"
+  }
+}

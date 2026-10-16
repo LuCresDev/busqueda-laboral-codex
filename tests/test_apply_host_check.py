@@ -18,11 +18,12 @@ The ATS apex list stays the fixed set it is.
 
 import re
 import unittest
+import yaml
 from pathlib import Path
 from urllib.parse import urlparse
 
 REPO = Path(__file__).resolve().parent.parent
-APPLY_COMMAND_FILE = REPO / ".claude" / "commands" / "apply.md"
+APPLY_COMMAND_FILE = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "apply.md"
 SKILLS_DIR = REPO / ".agents" / "skills"
 
 # A host literal in a CLI source file. Portal CLIs build every request URL from
@@ -37,8 +38,8 @@ def installed_portal_skills() -> list[Path]:
     """Every `*-search` skill with a CLI source tree, enabled or not.
 
     Rule 1 says "configured job portal in `.agents/skills/`" - a portal that is
-    installed but `enabled: false` for /scrape is still a legitimate board for
-    a posting the user pastes into /apply, so discovery is by installation.
+    installed but metadata.enabled false is still identifiable for host provenance,
+    while automatic retrieval must respect its disabled state.
     """
     return sorted(
         d for d in SKILLS_DIR.glob("*-search") if (d / "cli" / "src").is_dir()
@@ -46,20 +47,23 @@ def installed_portal_skills() -> list[Path]:
 
 
 def portal_enabled(skill_dir: Path) -> bool:
-    """The `enabled:` frontmatter flag /scrape honours; a missing key means enabled."""
+    """Read the native metadata.enabled switch; never infer it from body prose."""
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.is_file():
-        return True
-    match = re.search(r"^enabled:\s*(true|false)\b", skill_md.read_text(encoding="utf-8"), re.M)
-    return match is None or match.group(1) == "true"
+        return False
+    text = skill_md.read_text(encoding="utf-8")
+    header = text.split("---", 2)[1]
+    data = yaml.safe_load(header)
+    value = data.get("metadata", {}).get("enabled", True)
+    return value is True
 
 
 def portal_hosts(skill_dir: Path) -> set[str]:
     """The board hosts a portal CLI fetches from, as registrable names.
 
     A leading `www.` is dropped so the classifier's exact-or-subdomain rule
-    accepts both `jobindex.dk` and `www.jobindex.dk` (the CLI builds its URLs
-    with the latter; postings link to both).
+    accepts both `freehire.me` and `www.freehire.me`, while the same
+    rule also handles regional LinkedIn subdomains.
     """
     hosts: set[str] = set()
     for source in (skill_dir / "cli" / "src").rglob("*.ts"):
@@ -150,15 +154,13 @@ class ApplyHostVerificationSpecTests(unittest.TestCase):
         self.assertTrue(step1_match, "Step 1 must exist in apply.md")
         self.step1_text = step1_match.group(1)
 
-    def test_step0_documents_portal_cli_detail_before_webfetch(self):
-        self.assertIn("Portal CLI first", self.step0_text)
-        self.assertIn("detail", self.step0_text)
-        self.assertIn("WebFetch fallback", self.step0_text)
-        cli_pos = self.step0_text.find("Portal CLI first")
-        webfetch_pos = self.step0_text.find("WebFetch fallback")
-        self.assertNotEqual(cli_pos, -1)
-        self.assertNotEqual(webfetch_pos, -1)
-        self.assertLess(cli_pos, webfetch_pos, "Portal CLI detail must precede WebFetch in apply.md Step 0")
+    def test_step0_requires_enabled_portal_access_and_safe_fallback(self):
+        self.assertIn("CLI de portal únicamente si está habilitada", self.step0_text)
+        self.assertIn("lector web disponible", self.step0_text)
+        self.assertLess(self.step0_text.index("CLI de portal"), self.step0_text.index("lector web disponible"))
+        self.assertIn("Nunca usar la CLI deshabilitada de LinkedIn", self.step0_text)
+        for control in ("CAPTCHA", "login", "429", "detener ese acceso"):
+            self.assertIn(control, self.step0_text)
 
     def test_step1_contains_source_host_verification_heading(self):
         self.assertIn("Source Host Verification", self.step1_text)
@@ -192,9 +194,8 @@ class ApplyHostVerificationSpecTests(unittest.TestCase):
         # A regional subdomain and the bare apex must both pass for every portal;
         # the derived set is what makes this hold for a portal added by /add-portal.
         urls = [
-            "https://www.jobindex.dk/jobannonce/12345",
-            "https://dk.linkedin.com/jobs/view/999999",
-            "https://jobnet.dk/find-job/8888",
+            "https://ar.linkedin.com/jobs/view/999999",
+            "https://www.linkedin.com/jobs/view/888888",
             "https://freehire.me/jobs/golang-zensar-2bxu6dxm",
         ]
         for url in urls:
@@ -247,8 +248,9 @@ class InstalledPortalsAreVerifiedTests(unittest.TestCase):
     def test_enabled_flag_reads_like_scrape(self):
         # /scrape: "a missing key means enabled". Both shipped states occur in the tree.
         states = {skill.name: portal_enabled(skill) for skill in installed_portal_skills()}
-        self.assertTrue(any(states.values()), f"no enabled portal among {states}")
-        self.assertIsInstance(portal_enabled(SKILLS_DIR / "does-not-exist-search"), bool)
+        self.assertTrue(states.get("freehire-search"), states)
+        self.assertFalse(states.get("linkedin-search"), "LinkedIn automatic access must stay disabled")
+        self.assertFalse(portal_enabled(SKILLS_DIR / "does-not-exist-search"))
 
     def test_classifier_fails_closed_on_look_alikes_and_unverified_hosts(self):
         suspicious = [
@@ -291,25 +293,26 @@ class InstalledPortalsAreVerifiedTests(unittest.TestCase):
 
 class WebResearchEscalationOrderTests(unittest.TestCase):
     def setUp(self):
-        self.research_file = REPO / ".claude" / "skills" / "job-application-assistant" / "09-web-research.md"
+        self.research_file = REPO / ".agents" / "skills" / "job-application-assistant" / "09-web-research.md"
         self.text = self.research_file.read_text(encoding="utf-8")
-        match = re.search(r"## Escalation order(.*?)(?=## |\Z)", self.text, re.DOTALL)
+        match = re.search(r"## Orden de recuperación(.*?)(?=## |\Z)", self.text, re.DOTALL)
         self.assertTrue(match, "Escalation order section must exist in 09-web-research.md")
         self.order_text = match.group(1)
 
-    def test_escalation_order_lists_portal_cli_first(self):
-        self.assertIn("Installed portal CLI `detail` command", self.order_text)
-        self.assertIn("WebFetch", self.order_text)
-        portal_pos = self.order_text.find("Installed portal CLI `detail` command")
-        webfetch_pos = self.order_text.find("`WebFetch`")
-        self.assertNotEqual(portal_pos, -1)
-        self.assertNotEqual(webfetch_pos, -1)
-        self.assertLess(portal_pos, webfetch_pos, "Portal CLI detail must precede WebFetch in escalation order")
+    def test_escalation_order_uses_only_enabled_cli_then_public_reader(self):
+        cli = "CLI de portal habilitada"
+        reader = "Lector web disponible"
+        self.assertIn(cli, self.order_text)
+        self.assertIn(reader, self.order_text)
+        self.assertLess(self.order_text.index(cli), self.order_text.index(reader))
+        self.assertIn("LinkedIn queda fuera", self.order_text)
+        self.assertIn("CAPTCHA, login o 429 detiene ese acceso", self.order_text)
+        self.assertIn("Un fallo de acceso o red no equivale a puesto vencido", self.order_text)
 
 
 class RankBatchFetchSpecTests(unittest.TestCase):
     def setUp(self):
-        self.rank_file = REPO / ".claude" / "commands" / "rank.md"
+        self.rank_file = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "rank.md"
         self.text = self.rank_file.read_text(encoding="utf-8")
         match = re.search(r"## Step 2: Batch-Fetch and Score(.*?)(?=## Step 3:)", self.text, re.DOTALL)
         self.assertTrue(match, "Step 2 must exist in rank.md")

@@ -1,22 +1,36 @@
-# Security Policy
+# Límites de confianza y datos privados
 
-## Reporting a vulnerability
+Los avisos, sitios web, documentos y mensajes externos son datos de entrada. Sus
+instrucciones incrustadas no modifican el flujo, no autorizan ejecutar comandos ni
+permiten transmitir el perfil a terceros. Las defensas del agente son instrucciones;
+el proyecto no afirma ser un sandbox de seguridad.
 
-Please report security findings privately via **[GitHub private vulnerability reporting](https://github.com/MadsLorentzen/ai-job-search/security/advisories/new)** rather than a public issue. You will get a response within a few days, credit in the fix unless you prefer otherwise, and public disclosure coordinated with the patch.
+## Datos personales
 
-If the private form is unavailable, open a public issue that describes the *class* of problem without a working recipe, and note that you have details to share privately.
+`profile/`, exportaciones de LinkedIn, CV, documentos, tracker, candidaturas, cachés,
+`.runtime/`, `.env` y reportes son privados. Las plantillas públicas son genéricas.
+`.gitignore` y el exportador excluyen esos datos. El exportador también filtra
+archivos privados forzados al índice y no incluye historial Git; no puede borrar un
+secreto previamente publicado en un repositorio remoto.
 
-## Threat model, honestly stated
+## Herramientas y red
 
-This is an agentic workflow: an LLM with file access reads untrusted web content (job postings) alongside your personal data (CV, profile, application history). That combination is the main risk surface, and it cannot be fully eliminated - only narrowed. What the framework does about it:
+Los skills usan las capacidades reales de la sesión Codex. No se copian permisos
+de otros agentes ni se desactivan las aprobaciones del entorno. Los portales respetan
+sus restricciones de acceso y su estado habilitado. Ante sesión, CAPTCHA, 403 o 429,
+se detiene esa vía y se ofrece un enlace o texto aportado por el usuario.
 
-- **Untrusted-input rules**: `/apply` and `/rank` treat posting text as data, never instructions - agents are told not to follow directions embedded in postings and not to fetch URLs found inside posting text (the user-supplied posting URL is the one exception). Reviewer research starts from the company identity the user confirmed, never from links in the posting body.
-- **Permission allowlist**: `.claude/settings.json` pre-approves only the specific commands the workflow needs; the `security-guards` CI job fails any PR that widens it, adds package-manifest lifecycle scripts, or weakens the personal-data gitignore rules. Note the allowlist governs Bash commands - the model's native WebFetch/WebSearch tools are outside its reach, which is exactly why the instruction-level rules above exist.
-- **Personal data boundaries**: your populated profile, tracker, salary data, and application archive are gitignored; documents never leave the machine by design (`/notion-sync` syncs filenames only; nothing uploads document content anywhere).
+Una candidatura preparada queda como borrador hasta que el usuario indique el envío.
+Gmail y Notion son opcionales y dependen de conexiones disponibles. No se almacenan
+claves en los archivos compartibles ni se conectan navegadores automáticamente.
 
-Instruction-level defenses raise the bar; they are not a sandbox. If you run this workflow against job boards you do not trust at all, review what the agent fetched and wrote before sending anything out.
+## Controles del repositorio
 
-## Scope notes
+`tools/security_guards.py` comprueba exclusiones de datos, configuración nativa y
+manifiestos de dependencias. El instalador de portales rechaza lifecycle scripts y
+trustedDependencies. CI ejecuta controles y pruebas con permisos de lectura; no consulta
+portales reales ni publica información de candidatos.
 
-- Portal CLI skills make live requests only when you run them; CI never does.
-- Community fork skills listed in the [forks index](https://github.com/MadsLorentzen/ai-job-search/discussions/78) are **not** covered by this policy - review the code you copy, as the index itself says.
+Si detectás una vulnerabilidad, informala al mantenedor de la copia que estés usando
+sin adjuntar datos personales. Las vulnerabilidades del proyecto original se pueden
+reportar según [su política](https://github.com/MadsLorentzen/ai-job-search/security/policy).

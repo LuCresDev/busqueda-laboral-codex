@@ -36,7 +36,7 @@ class CheckerRepoFixture(unittest.TestCase):
         tools.mkdir()
         shutil.copy(SCRIPT, tools / "check_framework_version.py")
 
-        self.skill_dir = self.root / ".claude" / "skills" / "job-application-assistant"
+        self.skill_dir = self.root / ".agents" / "skills" / "job-application-assistant"
         self.skill_dir.mkdir(parents=True)
         self.framework_file = self.skill_dir / "01-test-profile.md"
         self.framework_file.write_text(FRONTMATTER + BODY, encoding="utf-8")
@@ -105,6 +105,24 @@ class FrameworkVersionGateTests(CheckerRepoFixture):
 
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("missing 'framework_version'", result.stdout)
+
+    def test_empty_methodology_root_does_not_pass_vacuously(self):
+        self.framework_file.unlink()
+        (self.root / "AGENTS.md").write_text(FRONTMATTER, encoding="utf-8")
+        result = self.run_checker()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("no native methodology files", result.stdout)
+
+    def test_downgrade_does_not_count_as_a_version_bump(self):
+        self.framework_file.write_text(FRONTMATTER.replace("1.0.0", "0.9.0") + BODY + "Changed.\n", encoding="utf-8")
+        result = self.run_checker()
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("new version must increase", result.stdout)
+
+    def test_invalid_version_marker_is_rejected(self):
+        self.framework_file.write_text(FRONTMATTER.replace("1.0.0", "1.bad") + BODY, encoding="utf-8")
+        self.assertIn("invalid framework_version", self.run_checker().stdout)
+
 
 class RunGitEncodingTests(unittest.TestCase):
     """run_git() must decode `git diff` output as UTF-8 explicitly, not via

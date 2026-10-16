@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SKILL = REPO / ".claude" / "skills" / "job-scraper" / "SKILL.md"
+SKILL = REPO / ".agents" / "skills" / "job-scraper" / "SKILL.md"
 
 
 def _steps(text: str) -> dict[str, str]:
@@ -57,7 +57,7 @@ class ScrapeProvenanceSpec(unittest.TestCase):
 
     def test_fallback_results_are_tagged_at_the_source(self):
         step1 = self.steps.get("Step 1: Search", "")
-        fallback = step1.partition("#### 1c. WebSearch fallback")[2]
+        fallback = step1.partition("#### 1c. búsqueda web disponible fallback")[2]
         self.assertIn(
             "Step 4 persists this as the entry's `source`",
             fallback,
@@ -80,8 +80,8 @@ class ScrapeProvenanceSpec(unittest.TestCase):
 
 class TestRecencyFallback(unittest.TestCase):
     """Step 1b.3 says to scope to the last 14 days via the portal's recency
-    flag - but not every portal has one (jobdanmark offers no date filter or
-    sort at all), which left the instruction unsatisfiable there: the agent
+    flag - but a generated portal may have no date filter or sort, which
+    leaves that instruction unsatisfiable: the agent
     either silently skipped the scoping or invented a flag, and inventing a
     flag is exactly what the UNKNOWN_FLAG rejection now errors on (review
     finding F32, 2026-08-19). Every portal emits a `date` field, so

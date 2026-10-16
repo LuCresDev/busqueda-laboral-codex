@@ -1,0 +1,33 @@
+{
+  "person": {
+    "name": "[NOMBRE_APELLIDO]",
+    "email": "[EMAIL]",
+    "phone": "[TELEFONO_CON_CODIGO_PAIS]",
+    "location": "[CIUDAD_PROVINCIA_ARGENTINA]",
+    "links": ["[URL_LINKEDIN_O_PORTFOLIO]"]
+  },
+  "headline": "[PUESTO_OBJETIVO]",
+  "summary": "[RESUMEN_BREVE_BASADO_EN_EL_PERFIL_CONFIRMADO]",
+  "skills": ["[HABILIDAD_RELEVANTE_CONFIRMADA]"],
+  "experience": [
+    {
+      "role": "[PUESTO_REAL]",
+      "organization": "[EMPRESA_REAL]",
+      "period": "[MES_ANIO_INICIO - MES_ANIO_FIN_O_ACTUALIDAD]",
+      "location": "[CIUDAD_O_MODALIDAD]",
+      "bullets": ["[LOGRO_O_RESPONSABILIDAD_CONFIRMADA]"]
+    }
+  ],
+  "education": [
+    {
+      "degree": "[TITULO_O_CARRERA_REAL]",
+      "institution": "[INSTITUCION_REAL]",
+      "period": "[ANIO_INICIO - ANIO_FIN_O_ACTUALIDAD]",
+      "status": "[FINALIZADO_O_EN_CURSO_CON_FECHA_ESTIMADA]",
+      "details": []
+    }
+  ],
+  "languages": [],
+  "certifications": [],
+  "projects": []
+}

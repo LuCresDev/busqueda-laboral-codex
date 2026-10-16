@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-COMMAND = REPO / ".claude" / "commands" / "outcome.md"
+COMMAND = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "outcome.md"
 
 
 class OutcomeStaleBranchSpecTests(unittest.TestCase):
@@ -27,7 +27,7 @@ class OutcomeStaleBranchSpecTests(unittest.TestCase):
         self.assertIn("`stale <N>` or `sweep <N>`", self.text)
 
     def test_step1_suggests_stale_sweep(self):
-        self.assertIn("/outcome stale", self.text)
+        self.assertIn("seguimiento stale", self.text)
         self.assertIn("60+ days", self.text)
 
     def test_step2c_section_exists(self):

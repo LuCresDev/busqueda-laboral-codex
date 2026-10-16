@@ -11,7 +11,7 @@ files and the example sources are the only place a test can catch them:
 - F31: an unescaped `%` in body text silently truncates the rest of the
   line (`&` at least fails loudly). The guidance must name the escapes.
 - F34: `pdftotext` without `-enc UTF-8` emits Latin-1 on Xpdf builds,
-  so a correct Danish CV fails the documented "no replacement
+  so a correct Unicode CV fails the documented "no replacement
   characters" check and the agent is sent to "fix" a healthy document.
 """
 import re
@@ -19,10 +19,10 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SKILL_DIR = REPO / ".claude" / "skills" / "job-application-assistant"
+SKILL_DIR = REPO / ".agents" / "skills" / "job-application-assistant"
 CV_TEMPLATES = SKILL_DIR / "05-cv-templates.md"
 COVER_TEMPLATES = SKILL_DIR / "06-cover-letter-templates.md"
-APPLY = REPO / ".claude" / "commands" / "apply.md"
+APPLY = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "apply.md"
 EXAMPLE_CV = REPO / "cv" / "main_example.tex"
 EXAMPLE_COVER = REPO / "cover_letters" / "cover_example.tex"
 

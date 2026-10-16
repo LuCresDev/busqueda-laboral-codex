@@ -30,15 +30,15 @@ per-file diff commands.
 ### Changed
 
 - **`/apply` and `/rank` route matching portal URLs to installed CLI `detail` before `WebFetch`**
-  (#535, `.claude/commands/apply.md` Step 0, `.claude/commands/rank.md` Step 2,
-  `.claude/skills/job-application-assistant/09-web-research.md`) - job portal URLs pasted
+  (#535, `.agents/skills/argentina-job-search/references/workflows/apply.md` Step 0, `.agents/skills/argentina-job-search/references/workflows/rank.md` Step 2,
+  `.agents/skills/job-application-assistant/09-web-research.md`) - job portal URLs pasted
   into `/apply` or evaluated in batch by `/rank` now invoke the matching installed portal CLI's
   `detail <url> --format plain` command first, avoiding bot-detection 403s and login walls on
   aggregator boards before falling back to `WebFetch`. Escalation order in `09-web-research.md`
   places portal CLI detail as the first rung (`framework_version: 1.1.1 -> 1.1.2`).
 
 - **`/apply` Step 5e names explicit cleanup shell commands for build intermediates**
-  (#531, `.claude/commands/apply.md`) - the step previously described deleting `.aux`/`.log`/`.out`
+  (#531, `.agents/skills/argentina-job-search/references/workflows/apply.md`) - the step previously described deleting `.aux`/`.log`/`.out`
   in prose, leaving artifact cleanup vulnerable to being skipped by agents. It now specifies explicit
   `rm` commands for stock/custom LaTeX toolchains and redirected `build/` directories, timed after
   log-inspecting steps 5b-5d complete, and explicitly preserves template assets (`cover.cls`,
@@ -86,7 +86,7 @@ per-file diff commands.
   `<div>` in a description that stays in the text.
 
 - **`/add-portal` includes the `.agents` prefix in generated `allowed-tools`** (#545,
-  `.claude/commands/add-portal.md`, `tests/test_add_portal_command.py`) - the specification template
+  `.agents/skills/argentina-job-search/references/workflows/add-portal.md`, `tests/test_add_portal_command.py`) - the specification template
   for the new portal's `SKILL.md` frontmatter wrote `allowed-tools: Bash(bun run skills/<name>/cli/src/cli.ts *)`
   without `.agents/`, the one path in the file without it. A skill's `allowed-tools` grants the
   listed command when that skill is invoked, so a generated portal invoked on its own granted a
@@ -105,7 +105,7 @@ per-file diff commands.
   characters are now matched literally.
 
 - **CV template guidance aligns geometry scale with master template** (#553,
-  `.claude/skills/job-application-assistant/05-cv-templates.md`, `tests/test_latex_guidance.py`) -
+  `.agents/skills/job-application-assistant/05-cv-templates.md`, `tests/test_latex_guidance.py`) -
   the preamble snippet in `05-cv-templates.md` specified `\usepackage[scale=0.77]{geometry}`,
   whereas the master reference template `cv/main_example.tex` configures `scale=0.80`. The guide
   has been aligned to `scale=0.80`, preventing tighter margins and unwanted page overflow during
@@ -126,8 +126,8 @@ per-file diff commands.
   extensions, invalid dates, dry runs, and scoring errors keep their behavior.
 
 - **`/reset profile` keeps the `framework_version` frontmatter on the two files it rewrites**
-  (`.claude/commands/reset.md` Step 3, `tests/test_reset_command.py`) - the full-file skeletons
-  for `01-candidate-profile.md` and `02-behavioral-profile.md` started at the `#` title, while
+  (`.agents/skills/argentina-job-search/references/workflows/reset.md` Step 3, `tests/test_reset_command.py`) - the full-file skeletons
+  for `profile/candidate.md` and `profile/behavioral.md` started at the `#` title, while
   the shipped files open with a `---` block carrying `framework_version`. Applied as written,
   one `/reset profile` left both files failing `tools/check_framework_version.py` ("missing
   'framework_version' in frontmatter") and invisible to `tools/check_upstream_updates.py`,
@@ -140,19 +140,19 @@ per-file diff commands.
   Found while re-checking #519's class of drift.
 
 - **`/reset profile` now targets the headings the shipped skill files actually have**
-  (`.claude/commands/reset.md` Step 3, `tests/test_reset_command.py`) - two of its Step 3
+  (`.agents/skills/argentina-job-search/references/workflows/reset.md` Step 3, `tests/test_reset_command.py`) - two of its Step 3
   targets had drifted. The `05-cv-templates.md` step anchored on a section beginning
   `**Profile statement templates`, a line the guide has never contained (its heading is
   `**Create 2-3 profile statement templates for your main role types:**`), so the wipe found
   nothing: the user's role-tailored profile statements, and any `*[Used for: ...]*`
   statements `/setup` Path A extracted from archived applications, survived a reset that
-  reported success. The `02-behavioral-profile.md` skeleton used headings the shipped file
+  reported success. The `profile/behavioral.md` skeleton used headings the shipped file
   does not have (`Strongest Behavioral Traits`, `How I Work Best`, a truncated `Growth Areas`)
   and dropped `## Core Behavioral Drives` - the assessment table the shipped file carries - so
   one reset left the file's headings permanently different
   from every other fork's, with nothing to recreate the table. The anchor now names the real
   heading and the replacement re-emits it; the skeleton carries the shipped headings in order.
-  `01-candidate-profile.md` and `07-interview-prep.md` were already correct. Two new tests
+  `profile/candidate.md` and `07-interview-prep.md` were already correct. Two new tests
   derive both checks from the shipped files, so a renamed heading fails until `/reset`
   follows it; both fail on master.
 
@@ -177,8 +177,8 @@ per-file diff commands.
   the fixed set it is; parsing `apply.md`'s example list was deliberately not done, since a
   parser keyed on prose wording is the next thing to go stale. Reported by Holo-Eter.
 
-- **`/expand` and `/setup` now append behavioral findings to sections `02-behavioral-profile.md`
-  actually has** (`.claude/commands/expand.md` Step 5, `.claude/commands/setup.md` Step A7,
+- **`/expand` and `/setup` now append behavioral findings to sections `profile/behavioral.md`
+  actually has** (`.agents/skills/argentina-job-search/references/workflows/expand.md` Step 5, `.agents/skills/argentina-job-search/references/workflows/setup.md` Step A7,
   `tests/test_expand_command.py`, `tests/test_setup_command.py`) - both told the model to add
   to "Strongest Behavioral Traits" and "How I Work Best" / "How [Candidate] Works Best" while
   also saying "match existing structure", but the shipped file's headings are "Strongest
@@ -256,7 +256,7 @@ per-file diff commands.
   decoding deterministically regardless of host locale. Pinned by `RunGitEncodingTests` in
   `tests/test_check_framework_version.py`, which fails against the original un-pinned call.
 
-- **`/rank` still sweeps deadlines when there is nothing new to score** (`.claude/commands/rank.md`
+- **`/rank` still sweeps deadlines when there is nothing new to score** (`.agents/skills/argentina-job-search/references/workflows/rank.md`
   Step 1, `tests/test_rank_command.py`) - when `rank_state.py candidates` reported no eligible
   jobs, Step 1 said "Nothing new to rank" and stopped before Step 3's rule 6 expiry sweep ever
   ran. Once a backlog has been ranked, that is the path every later `/rank` takes, so
@@ -358,13 +358,13 @@ per-file diff commands.
   the two integration cases while retaining the existing dependency-free tests.
 
 - **`documents/projects/` portfolio ingestion in `/setup` (Path A)** (`documents/README.md`,
-  `.claude/commands/setup.md`, `.claude/commands/reset.md`, `tests/test_setup_command.py`) -
+  `.agents/skills/argentina-job-search/references/workflows/setup.md`, `.agents/skills/argentina-job-search/references/workflows/reset.md`, `tests/test_setup_command.py`) -
   onboards project writeups, case studies, and documentation (`.md`, `.txt`, `.pdf`)
   from `documents/projects/`, extracting structured summaries (problem domain, tech stack,
   technical challenges, and measurable outcomes) to populate `## Independent Projects`
-  in `01-candidate-profile.md`.
+  in `profile/candidate.md`.
 
-- **Source host verification in `/apply` Step 1** (#431, `.claude/commands/apply.md`,
+- **Source host verification in `/apply` Step 1** (#431, `.agents/skills/argentina-job-search/references/workflows/apply.md`,
   `tests/test_apply_host_check.py`) - before proceeding to draft CV and cover letters,
   Step 1 verifies the posting URL's provenance against installed portal boards and the
   six standard ATS apex domains (`greenhouse.io`, `lever.co`, `myworkdayjobs.com`/`workday.com`,
@@ -372,13 +372,13 @@ per-file diff commands.
   fails closed, and unrecognized hosts are plainly flagged as unverified in the evaluation
   output (`⚠ Unverified source host: <hostname>`) before drafting tokens are spent.
 
-- **`/expand` project and portfolio expansion** (`.claude/commands/expand.md`,
+- **`/expand` project and portfolio expansion** (`.agents/skills/argentina-job-search/references/workflows/expand.md`,
   `tests/test_expand_command.py`) - expands candidate discovery
   to technical projects from public GitHub repositories, extracting structured summaries
   (problem domain, tech stack, key technical challenges, and verifiable outcomes) to
-  populate the `## Independent Projects` section of `01-candidate-profile.md`.
+  populate the `## Independent Projects` section of `profile/candidate.md`.
 
-- **Stale sweep branch in `/outcome`** (`.claude/commands/outcome.md`,
+- **Stale sweep branch in `/outcome`** (`.agents/skills/argentina-job-search/references/workflows/outcome.md`,
   `tests/test_outcome_stale.py`) - introduces `/outcome stale [N]` (and `/outcome sweep [N]`)
   to batch-resolve open applications quiet for 60+ (or N) days. Displays a numbered summary
   of qualifying applications, requires explicit user confirmation (`all`, `select`, or `skip`),
@@ -405,7 +405,7 @@ per-file diff commands.
 ### Changed
 
 - **`/add-template` keeps a registered template's intermediates in `build/`**
-  (#473, `.claude/commands/add-template.md`, `.gitignore`,
+  (#473, `.agents/skills/argentina-job-search/references/workflows/add-template.md`, `.gitignore`,
   `tests/test_add_template_build_dir.py`) - the elicited compile command
   now redirects intermediates (`.aux`, `.log`, ...) to a `build/` folder beside the source
   and moves the PDF back, so Step 4's test-compile cleanup deletes one folder instead of
@@ -542,7 +542,7 @@ per-file diff commands.
   next docstring that quotes a LaTeX macro is caught too.
 
 - **`/apply` Step 5b now actually runs the page-count check it claimed Step 5d ran**
-  (`.claude/commands/apply.md`, `tests/test_apply_page_count.py`) - the 5b prose said
+  (`.agents/skills/argentina-job-search/references/workflows/apply.md`, `tests/test_apply_page_count.py`) - the 5b prose said
   "Page count is not checked here - that is `verify_pdf.py --pages`'s job, and Step 5d already
   runs it", and `verify_layout.py`'s docstring declines to measure page count for the same
   reason. Step 5d's only `verify_pdf.py` call is `--dump-text`, and no step in the workflow
@@ -643,8 +643,8 @@ per-file diff commands.
   wrappers, plus a new `detail-backoff.test.ts` that exercises the handler path itself -
   its retry cases fail against the bare `fetch()`.
 
-- **Free-form tracker notes no longer break the CSV row** (#454) (`.claude/commands/gmail-sync.md`,
-  `.claude/commands/outcome.md`, `tests/test_tracker_notes_csv_safe.py`) - two writers put
+- **Free-form tracker notes no longer break the CSV row** (#454) (`.agents/skills/argentina-job-search/references/workflows/gmail-sync.md`,
+  `.agents/skills/argentina-job-search/references/workflows/outcome.md`, `tests/test_tracker_notes_csv_safe.py`) - two writers put
   free-form text into the `notes` column of `job_search_tracker.csv`: `/gmail-sync` Step 7a
   copied the raw subject of a received email, and `/outcome` Step 4 appended "a short dated
   note" with no constraint on its content. No writer in the framework emits a quoted tracker
@@ -683,7 +683,7 @@ per-file diff commands.
   host-check rule proposed in #431, which stays with its proposer.
 
 - **`/outcome` and `/interview` no longer confuse two roles at the same company** (#443)
-  (`.claude/commands/outcome.md`, `.claude/commands/interview.md`,
+  (`.agents/skills/argentina-job-search/references/workflows/outcome.md`, `.agents/skills/argentina-job-search/references/workflows/interview.md`,
   `tests/test_apply_records_application.py`) - when a tracker row's `cv_file` /
   `cover_letter_file` columns are empty, both commands fell back to a company-prefix glob
   (`cv/main_<company>*.tex`). Two roles at one company both match it, so `/outcome` copied
@@ -713,7 +713,7 @@ per-file diff commands.
   The file's instruction and its own snippet disagreed, and the snippet won silently.
   Both expansions are now guarded with `${SCRATCHPAD:?...}`, turning a silent repo write into
   an immediate failure whose message names where the value comes from. Behaviour is unchanged
-  wherever the variable is set. The same undefined reference in `.claude/commands/rank.md`
+  wherever the variable is set. The same undefined reference in `.agents/skills/argentina-job-search/references/workflows/rank.md`
   was removed by #425 as a side effect of rewriting Step 2/4; this is the remaining instance.
 
 - **`seen_jobs.json` keys are now a pure function of the posting** - `/scrape` Step 4 described
@@ -1051,7 +1051,7 @@ per-file diff commands.
   `/setup` placeholders while preserving the scoring framework and the query structure;
   `04-job-evaluation.md` is out of the preserved list, which keeps `03-writing-style.md`
   and `06-cover-letter-templates.md` (correctly - the latter's `[YOUR_NAME]` tokens are
-  LaTeX scaffolding Step 3 never writes to). `CLAUDE.md` and `cv/main_example.tex` stay
+  LaTeX scaffolding Step 3 never writes to). `profile/candidate.md` and `cv/main_example.tex` stay
   outside the `profile` scope, which covers skill files only, and the preview and Step 4
   now say so instead of implying a full wipe. `tests/test_reset_command.py` gains a
   profile-scope guard alongside its documents-scope one, deriving the file list from
@@ -1249,7 +1249,7 @@ per-file diff commands.
   `\name{}`/`\address{}`/`\phone{}`/`\email{}` data and touches neither, so a fully
   personalized CV with a real name, address, phone and email passed the check (proven
   empirically in the review). The guard now asserts sentinels inside the `\name{}` and
-  `\email{}` lines, and `01-candidate-profile.md`'s sentinel moves from the `<!-- SETUP`
+  `\email{}` lines, and `profile/candidate.md`'s sentinel moves from the `<!-- SETUP`
   header comment onto the `[YOUR_EMAIL]` Identity field for the same reason. The new
   `tests/test_placeholder_integrity.py` simulates the `/setup` edit and requires the
   guard to fire on it.
@@ -1327,7 +1327,7 @@ per-file diff commands.
   encoding flag emits Latin-1 on Xpdf builds, so every non-ASCII character in a correct CV
   (Rambøll, Ingeniør, København) read back as a replacement character and failed the
   parseability checklist, steering the agent to "fix" a healthy document. The commands in
-  `apply.md`, `05-cv-templates.md`, and `CLAUDE.md`'s verification checklist now carry
+  `apply.md`, `05-cv-templates.md`, and `profile/candidate.md`'s verification checklist now carry
   `-enc UTF-8`, which is deterministic on both poppler and Xpdf. Pinned by
   `tests/test_latex_guidance.py`.
 
@@ -1499,11 +1499,11 @@ per-file diff commands.
   The ignore rule `upskill/*.md` is rooted (a middle slash anchors a gitignore pattern to the
   repo root), but `/upskill` is a *skill*, and skills resolve bare relative paths against
   their own directory - the same observed behavior the `**/job_scraper/*` rules exist for.
-  A report written to `.claude/skills/upskill/upskill/report-*.md` was therefore not ignored
+  A report written to `.agents/skills/upskill/upskill/report-*.md` was therefore not ignored
   (`git check-ignore` confirms it on the unpatched tree), and an upskill report is the
   candidate's skill gaps and weaknesses measured against named employers - among the most
   sensitive files the workflow generates. The obvious widening, `**/upskill/*.md`, would have
-  ignored the template's own `.claude/skills/upskill/SKILL.md` (the skill directory shares
+  ignored the template's own `.agents/skills/upskill/SKILL.md` (the skill directory shares
   the name), so the new rule pins the report-file prefix instead: `**/upskill/report-*.md`.
   Added to `.gitignore` and `security_guards.py`'s `REQUIRED_IGNORE_RULES`, with a
   `check-ignore`-based test pinning both properties - reports ignored at both depths,
@@ -1725,7 +1725,7 @@ per-file diff commands.
   language requirements against what the candidate actually speaks (not a Scoring Dimension,
   not a `/scrape`/`/rank` field, nothing for `/apply`'s existing generic language detection
   to report to). Adds that check, structured like the existing Eligibility Gate, on a new
-  structured `Languages` table in CLAUDE.md / `01-candidate-profile.md` (`/setup` asks, or
+  structured `Languages` table in profile/candidate.md / `profile/candidate.md` (`/setup` asks, or
   infers it from a CV/LinkedIn export): a posting requiring a language you haven't declared
   at all is a hard **FAIL**; one requiring a higher level than you declared in a language you
   *do* work in is **FLAG**, not an auto-reject, so borderline cases (a strict "fluent" bar vs.

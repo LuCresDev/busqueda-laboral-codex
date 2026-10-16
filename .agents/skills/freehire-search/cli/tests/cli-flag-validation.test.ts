@@ -1,9 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { runCLI } from "./helpers";
 
-// These assert on validation error codes that are emitted BEFORE any network
-// call (or independently of it), so the suite is network-free: a valid-flag case
-// still runs offline because it only checks the ABSENCE of a validation error.
+// Validation runs through the real CLI parser. The subprocess helper preloads
+// offline fetch responses; only the loopback fixture servers below use sockets.
 
 function parsedStderr(stderr: string): { error?: string; code?: string } {
   try {
@@ -45,7 +44,7 @@ describe("freehire CLI flag validation", () => {
       expect(parsedStderr(result.stderr).code).toBe("BAD_ARG");
     });
 
-    test("--jobage 0 exits 1 with BAD_ARG (0 silently disables the filter, like the Danish CLIs' min(1))", async () => {
+    test("--jobage 0 exits 1 with BAD_ARG (0 silently disables the filter, minimum allowed is 1)", async () => {
       const result = await runCLI(["search", "--jobage", "0"]);
       expect(result.exitCode).not.toBe(0);
       expect(parsedStderr(result.stderr).code).toBe("BAD_ARG");
@@ -53,7 +52,8 @@ describe("freehire CLI flag validation", () => {
 
     test("valid integers produce no BAD_ARG", async () => {
       const result = await runCLI(["search", "--jobage", "7", "--page", "1", "--limit", "1"]);
-      expect(parsedStderr(result.stderr).code).not.toBe("BAD_ARG");
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout).results).toEqual([]);
     });
   });
 
@@ -181,9 +181,9 @@ describe("freehire CLI flag validation", () => {
 describe("unknown flag rejection", () => {
   // add-portal.md's contract: "a bogus flag or missing required arg exits 1
   // with a JSON error on stderr". A silently discarded flag is worse than an
-  // error: on jobdanmark a wrong flag name returned the entire database
-  // (13,862 results) as if it matched the query (review finding F13,
-  // 2026-08-19). Rejection happens before dispatch, so these are network-free.
+  // error: an ignored filter can return the entire database as if it matched
+  // the query. Rejection happens before dispatch; subprocess tests preload
+  // offline responses so valid arguments never contact a public portal.
   test("a bogus --flag exits 1 with a JSON error instead of being silently discarded", async () => {
     const result = await runCLI(["search", "--query", "test", "--bogus-flag", "xyz"]);
     expect(result.exitCode).toBe(1);

@@ -20,7 +20,7 @@ except ImportError:
     _HAVE_YAML = False
 
 REPO = Path(__file__).resolve().parent.parent
-COMMAND = REPO / ".claude" / "commands" / "outcome.md"
+COMMAND = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "outcome.md"
 
 
 class OutcomeFollowupBranchSpec(unittest.TestCase):

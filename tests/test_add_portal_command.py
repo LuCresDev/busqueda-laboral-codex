@@ -3,14 +3,14 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-COMMAND = REPO / ".claude" / "commands" / "add-portal.md"
+COMMAND = REPO / ".agents" / "skills" / "argentina-job-search" / "references" / "workflows" / "add-portal.md"
 
 
 class TestAddPortalCommand(unittest.TestCase):
     def test_allowed_tools_specifies_agents_skills_path(self):
         content = COMMAND.read_text(encoding="utf-8")
         self.assertIn(
-            "allowed-tools: Bash(bun run .agents/skills/<name>/cli/src/cli.ts *)",
+            "bun run .agents/skills/<name>/cli/src/cli.ts search",
             content,
         )
         self.assertNotIn(

@@ -1,0 +1,19 @@
+{
+  "person": {
+    "name": "[NOMBRE_APELLIDO]",
+    "email": "[EMAIL]",
+    "phone": "[TELEFONO_CON_CODIGO_PAIS]",
+    "location": "[CIUDAD_PROVINCIA_ARGENTINA]",
+    "links": []
+  },
+  "date": "[CIUDAD_DIA_DE_MES_DE_ANIO]",
+  "company": "[EMPRESA_DESTINATARIA]",
+  "role": "[PUESTO]",
+  "recipient": "[SALUDO_A_LA_PERSONA_O_EQUIPO_DE_SELECCION]",
+  "paragraphs": [
+    "[MOTIVACION_ESPECIFICA_POR_EL_PUESTO_Y_LA_EMPRESA]",
+    "[EXPERIENCIA_Y_LOGROS_REALES_RELACIONADOS_CON_LA_BUSQUEDA]",
+    "[CIERRE_BREVE_CON_DISPONIBILIDAD_CONFIRMADA]"
+  ],
+  "closing": "Saludos cordiales,"
+}

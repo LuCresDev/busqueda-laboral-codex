@@ -1,9 +1,6 @@
-<!-- Heads-up before you publish: if you built this in a personalized fork
-     (your profile data, your market's job portals, another AI runtime),
-     note that GitHub points new PRs at the UPSTREAM repo by default.
-     Those adaptations live in forks - see CONTRIBUTING.md - and get
-     discovered via the pinned "Community forks & adaptations" discussion (#78).
-     Check the "base repository" dropdown above before you continue. -->
+<!-- Check the base repository and branch. Keep personal profile data,
+     applications and runtime files out of the diff. Use fictional fixtures.
+     Preserve the upstream attribution and MIT license. -->
 
 ## What changed and why
 

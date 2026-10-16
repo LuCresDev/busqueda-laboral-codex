@@ -4,15 +4,15 @@ Mirrors the pattern of test_html_report_command.py: derive the contract from
 the spec itself and compare it against the real portal CLIs, so a drift on
 either side fails with a clean diff.
 
-Why this test exists: .claude/skills/job-scraper/SKILL.md Step 2 promises
+Why this test exists: .agents/skills/job-scraper/SKILL.md Step 2 promises
 "Search output already includes title, company, location, date, and URL" for
 every portal CLI, and Step 4.75's degraded scan flags "company null or empty
 on every result" as a half-working parser. A CLI that quietly stops emitting
 those fields flags the portal as degraded on every /scrape run while CI stays
 green, breaks the seen_jobs.json dedupe (url_or_company_title_key), and leaves
-/rank without a posting URL. That failure class landed for real: jobnet-search
-emitted only the raw API schema and jobdanmark-search emitted companyName with
-no company/location/date keys until both were normalized.
+/rank without a posting URL. That failure class appears when a portal emits only its raw API schema or a
+companyName field without normalized company/location/date keys. Installed
+portals must satisfy the shared contract regardless of their market.
 
 {helpers.ts, commands/search.ts} are the two files where every registered
 CLI's search output currently lives (HTML-parsing portals normalize in
@@ -25,8 +25,8 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCRAPER_SKILL = REPO_ROOT / ".claude" / "skills" / "job-scraper" / "SKILL.md"
-PORTAL_CLIS = sorted((REPO_ROOT / ".agents" / "skills").glob("*-search"))
+SCRAPER_SKILL = REPO_ROOT / ".agents" / "skills" / "job-scraper" / "SKILL.md"
+PORTAL_CLIS = sorted(path.parent for path in (REPO_ROOT / ".agents/skills").glob("*/cli") if (path / "package.json").is_file())
 
 # Derived, never copied: a hardcoded field list drifts in lockstep with
 # nothing - if Step 2's prose drops or adds a field, the known-good portals
@@ -60,6 +60,8 @@ class ScrapeSearchOutputContractTests(unittest.TestCase):
 
     def test_every_portal_cli_emits_the_step2_contract_fields(self):
         contract = derive_contract_fields()
+        self.assertTrue(PORTAL_CLIS, "no real portal CLIs checked")
+        self.assertNotIn("argentina-job-search", [path.name for path in PORTAL_CLIS])
         failures: list[str] = []
         for portal in PORTAL_CLIS:
             search_ts = portal / "cli" / "src" / "commands" / "search.ts"

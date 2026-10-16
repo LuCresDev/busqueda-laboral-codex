@@ -95,7 +95,8 @@ class RelevanceFilterTests(TriageRepoFixture):
         self.assertIn("Worth reviewing", result.stdout)
         self.assertIn("kept.py", result.stdout)
         # Ready-to-run cherry-pick lines are offered, not executed.
-        self.assertIn("git cherry-pick", result.stdout)
+        self.assertIn("git show", result.stdout)
+        self.assertNotIn("git cherry-pick", result.stdout)
 
     def test_changelog_only_footprint_is_skipped(self):
         self.write("portals/gone.py", "y = 2\n")
@@ -169,11 +170,13 @@ class WorkflowGuardTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn(f"github.repository != '{UPSTREAM_SLUG}'", text)
 
-    def test_workflow_uses_builtin_token_only(self):
+    def test_workflow_is_manual_and_read_only(self):
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("GH_TOKEN: ${{ github.token }}", text)
-        # A cross-repo PAT is what let an early run write outside its own repo;
-        # the built-in token can't. Make sure no PAT secret sneaks back in.
+        self.assertIn("workflow_dispatch:", text)
+        self.assertIn("contents: read", text)
+        self.assertNotIn("schedule:", text)
+        self.assertNotIn("issues: write", text)
+        self.assertNotIn("gh issue", text)
         self.assertNotIn("secrets.", text)
 
     def test_actions_are_sha_pinned(self):

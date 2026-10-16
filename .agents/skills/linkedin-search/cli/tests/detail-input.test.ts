@@ -53,7 +53,7 @@ describe("detail input on the real handler path", () => {
     captureStderr();
 
     const rc = await runDetail({
-      id: "https://dk.linkedin.com/jobs/view/data-scientist-9876543210/?trackingId=x",
+      id: "https://ar.linkedin.com/jobs/view/data-scientist-9876543210/?trackingId=x",
       format: "json",
     });
 
