@@ -31,6 +31,9 @@ def check_links(path: Path, text: str) -> None:
     """Markdown links resolve beside their source; root paths also work in skills."""
     for match in re.finditer(r"\[[^\]\n]*\]\(([^)\n]+)\)", text):
         target = match.group(1).strip().split(' "', 1)[0].strip("<>")
+        # Literal example placeholders are not filesystem paths.
+        if target in {"...", "…"}:
+            continue
         if not target or target.startswith("#") or urlsplit(target).scheme:
             continue
         target = unquote(target.split("#", 1)[0])

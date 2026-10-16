@@ -84,6 +84,23 @@ class NativeSkillLintTests(unittest.TestCase):
         (self.workflow.parent / "data.md").write_text("# Datos\n", encoding="utf-8")
         self.assertEqual(self.run_linter().returncode, 0)
 
+    def test_literal_ellipsis_placeholders_do_not_hide_a_real_missing_link(self):
+        self.workflow.write_text(
+            "# Completar perfil\n\n[Ejemplo](...)\n[Otro ejemplo](…)\n"
+            "[Datos](missing.md)\n[Nombre con puntos](notes...md)\n",
+            encoding="utf-8",
+        )
+        result = self.run_linter()
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("2 failure(s)", result.stdout)
+        self.assertIn("broken local link: missing.md", result.stdout)
+        self.assertIn("broken local link: notes...md", result.stdout)
+        self.assertNotIn("broken local link: ...", result.stdout)
+        self.assertNotIn("broken local link: …", result.stdout)
+        for name in ("missing.md", "notes...md"):
+            (self.workflow.parent / name).write_text("# Datos\n", encoding="utf-8")
+        self.assertEqual(self.run_linter().returncode, 0)
+
     def test_cli_paths_cannot_escape_the_repository(self):
         self.skill.write_text("---\nname: example\ndescription: Example\nallowed-tools: Bash(bun run ../outside.ts *)\n---\n", encoding="utf-8")
         self.assertIn("must stay inside the repository", self.run_linter().stdout)

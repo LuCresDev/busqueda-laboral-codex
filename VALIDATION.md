@@ -2,8 +2,8 @@
 
 Validación local realizada el 15/10/2026 en Windows y Python 3.12.
 
-- 619 pruebas Python aprobadas desde una copia pública limpia, con un entorno virtual
-  aislado y las dependencias de `requirements-dev.txt`.
+- 620 pruebas Python aprobadas con un entorno virtual aislado y las dependencias
+  de `requirements-dev.txt`. La publicación se comprobó además en un clon público nuevo.
 - 128 pruebas Bun aprobadas (57 freehire y 71 LinkedIn), más comprobación de tipos
   en ambas CLI. Las pruebas usan respuestas simuladas y servidores locales; los
   subprocesos de prueba también bloquean las consultas externas reales.
@@ -26,6 +26,9 @@ Validación local realizada el 15/10/2026 en Windows y Python 3.12.
   local, historial Git ni rutas privadas del equipo.
 - El ZIP y un clon Git con `.gitattributes` conservan las sumas de verificación
   del manifiesto: texto LF, lanzador `.cmd` CRLF y binarios sin modificaciones.
+- La comprobación de enlaces omite únicamente los marcadores literales `...` y `…`;
+  sigue detectando rutas reales inexistentes en todas las plataformas. Las pruebas
+  de exportación resuelven los alias de rutas temporales de Windows.
 
 La prueba de candidatura utilizó datos ficticios. No certifica afinidad de ofertas
 con un candidato real ni garantiza compatibilidad con todos los sistemas ATS.

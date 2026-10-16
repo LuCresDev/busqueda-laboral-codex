@@ -17,7 +17,9 @@ spec.loader.exec_module(module)
 @unittest.skipUnless(shutil.which('git'), 'Git required to enumerate source files')
 class PublicExportTests(unittest.TestCase):
     def _source_with_mixed_endings(self, parent):
-        root = parent / 'source'
+        # GitHub's Windows runner may expose TEMP through an 8.3 path alias.
+        # Match the canonical root used by export() when recording file reads.
+        root = (parent / 'source').resolve()
         root.mkdir()
         subprocess.run(['git', 'init', '-q', str(root)], check=True, capture_output=True)
         contents = {
